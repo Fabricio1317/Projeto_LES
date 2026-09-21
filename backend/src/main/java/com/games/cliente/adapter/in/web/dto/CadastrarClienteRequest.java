@@ -22,8 +22,18 @@ public record CadastrarClienteRequest(
         @NotBlank(message = "CPF é obrigatório")
         String cpf,
 
-        @NotBlank(message = "Telefone é obrigatório")
-        String telefone,
+        // --- Telefone (RN0026: tipo, DDD e número) ---
+        @NotBlank(message = "Tipo de telefone é obrigatório")
+        String telefoneTipo,
+
+        @NotBlank(message = "DDD do telefone é obrigatório")
+        @Pattern(regexp = "\\d{2}", message = "DDD deve ter 2 dígitos")
+        String telefoneDdd,
+
+        @NotBlank(message = "Número do telefone é obrigatório")
+        @Pattern(regexp = "\\d{8,9}", message = "Número do telefone deve ter 8 ou 9 dígitos")
+        String telefoneNumero,
+        // ----------------------------------------------
 
         @NotBlank(message = "E-mail é obrigatório")
         @Email(message = "E-mail em formato inválido")

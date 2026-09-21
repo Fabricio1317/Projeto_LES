@@ -2,6 +2,7 @@ package com.games.cliente.application;
 
 import com.games.cliente.adapter.in.web.dto.CadastrarClienteRequest;
 import com.games.cliente.adapter.out.persistence.ClienteRepository;
+import com.games.cliente.adapter.out.persistence.EnderecoRepository;
 import com.games.cliente.application.exception.RegraNegocioException;
 import com.games.cliente.domain.Cliente;
 import com.games.cliente.domain.GeneroCliente;
@@ -33,6 +34,9 @@ class ClienteServiceTest {
     @Mock
     private AuditoriaService auditoria;
 
+    @Mock
+    private EnderecoRepository enderecoRepository;
+
     @InjectMocks
     private ClienteService service;
 
@@ -42,7 +46,7 @@ class ClienteServiceTest {
     void setUp() {
         requestValido = new CadastrarClienteRequest(
                 GeneroCliente.FEMININO, "Maria Silva", LocalDate.of(1995, 5, 20),
-                "529.982.247-25", "11999998888", "maria@example.com",
+                "529.982.247-25", "Celular", "11", "999998888", "maria@example.com",
                 "Senha@123", "Senha@123",
                 "Casa", "Rua",
                 "Rua das Flores", "100", "Centro", "01310100", "São Paulo", "SP", "Brasil"
@@ -66,7 +70,7 @@ class ClienteServiceTest {
     void naoDeveCadastrarComCpfInvalido() {
         var req = new CadastrarClienteRequest(
                 GeneroCliente.FEMININO, "Maria Silva", LocalDate.of(1995, 5, 20),
-                "111.111.111-11", "11999998888", "maria@example.com",
+                "111.111.111-11", "Celular", "11", "999998888", "maria@example.com",
                 "Senha@123", "Senha@123",
                 "Casa", "Rua",
                 "Rua das Flores", "100", "Centro", "01310100", "São Paulo", "SP", "Brasil");
@@ -80,7 +84,7 @@ class ClienteServiceTest {
     void naoDeveCadastrarComSenhaFraca() {
         var req = new CadastrarClienteRequest(
                 GeneroCliente.FEMININO, "Maria Silva", LocalDate.of(1995, 5, 20),
-                "529.982.247-25", "11999998888", "maria@example.com",
+                "529.982.247-25", "Celular", "11", "999998888", "maria@example.com",
                 "12345678", "12345678",
                 "Casa", "Rua",
                 "Rua das Flores", "100", "Centro", "01310100", "São Paulo", "SP", "Brasil");
@@ -94,7 +98,7 @@ class ClienteServiceTest {
     void naoDeveCadastrarComConfirmacaoDeSenhaDivergente() {
         var req = new CadastrarClienteRequest(
                 GeneroCliente.FEMININO, "Maria Silva", LocalDate.of(1995, 5, 20),
-                "529.982.247-25", "11999998888", "maria@example.com",
+                "529.982.247-25", "Celular", "11", "999998888", "maria@example.com",
                 "Senha@123", "Senha@456",
                 "Casa", "Rua",
                 "Rua das Flores", "100", "Centro", "01310100", "São Paulo", "SP", "Brasil");

@@ -15,7 +15,9 @@ public record ClienteResponse(
         String nome,
         LocalDate dataNascimento,
         String cpf,
-        String telefone,
+        String telefoneTipo,
+        String telefoneDdd,
+        String telefoneNumero,
         String email,
         String enderecoTipoResidencia,
         String enderecoTipoLogradouro,
@@ -34,7 +36,7 @@ public record ClienteResponse(
     public static ClienteResponse from(Cliente c) {
         return new ClienteResponse(
                 c.getId(), c.getCodigoCliente(), c.getGenero(), c.getNome(), c.getDataNascimento(),
-                c.getCpf(), c.getTelefone(), c.getEmail(),
+                c.getCpf(), c.getTelefoneTipo(), c.getTelefoneDdd(), c.getTelefoneNumero(), c.getEmail(),
                 c.getEnderecoTipoResidencia(), c.getEnderecoTipoLogradouro(),
                 c.getEnderecoLogradouro(), c.getEnderecoNumero(), c.getEnderecoBairro(),
                 c.getEnderecoCep(), c.getEnderecoCidade(), c.getEnderecoEstado(), c.getPais(),

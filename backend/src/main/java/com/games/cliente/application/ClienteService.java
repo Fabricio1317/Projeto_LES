@@ -2,12 +2,15 @@ package com.games.cliente.application;
 
 import com.games.cliente.adapter.in.web.dto.*;
 import com.games.cliente.adapter.out.persistence.ClienteRepository;
+import com.games.cliente.adapter.out.persistence.EnderecoRepository;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;
 import com.games.cliente.application.validation.CpfValidator;
 import com.games.cliente.application.validation.SenhaValidator;
 import com.games.cliente.domain.Cliente;
+import com.games.cliente.domain.Endereco;
 import com.games.cliente.domain.StatusCliente;
+import com.games.cliente.domain.TipoEndereco;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +29,13 @@ public class ClienteService {
 
     private final ClienteRepository repository;
     private final AuditoriaService auditoria;
+    private final EnderecoRepository enderecoRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public ClienteService(ClienteRepository repository, AuditoriaService auditoria) {
+    public ClienteService(ClienteRepository repository, AuditoriaService auditoria, EnderecoRepository enderecoRepository) {
         this.repository = repository;
         this.auditoria = auditoria;
+        this.enderecoRepository = enderecoRepository;
     }
 
     /**
@@ -69,7 +74,7 @@ public class ClienteService {
 
         Cliente cliente = new Cliente(
                 codigoCliente, req.genero(), req.nome(), req.dataNascimento(),
-                cpfLimpo, req.telefone(), req.email(), senhaHash,
+                cpfLimpo, req.telefoneTipo(), req.telefoneDdd(), req.telefoneNumero(), req.email(), senhaHash,
                 req.enderecoTipoResidencia(), req.enderecoTipoLogradouro(), // NOVOS CAMPOS
                 req.enderecoLogradouro(), req.enderecoNumero(), req.enderecoBairro(),
                 req.enderecoCep(), req.enderecoCidade(), req.enderecoEstado(),
@@ -79,20 +84,38 @@ public class ClienteService {
         auditoria.registrar("Cliente", cliente.getId(), "INSERT", cliente.getCodigoCliente(),
                 "Cadastro: nome=" + cliente.getNome() + ", cpf=" + cliente.getCpf());
 
-        // O endereço informado no cadastro fica só nos campos do próprio Cliente.
-        // Ele NÃO é duplicado na tabela de Endereços (RF0026): esta é uma lista à
-        // parte, gerenciada pelo cliente, que começa vazia (RN0021/RN0022 contam
-        // exclusivamente os endereços cadastrados explicitamente ali).
+        // O endereço informado no cadastro também é replicado como o primeiro
+        // registro da lista de endereços (RF0026), do tipo AMBOS: assim ele
+        // aparece na tela de "Endereços do cliente" e já satisfaz de imediato
+        // as RN0021/RN0022 (ao menos um endereço de cobrança e um de entrega).
+        Endereco enderecoResidencial = new Endereco(
+                cliente.getId(),
+                "Residencial",
+                TipoEndereco.AMBOS,
+                cliente.getEnderecoTipoResidencia(),
+                cliente.getEnderecoTipoLogradouro(),
+                cliente.getEnderecoLogradouro(),
+                cliente.getEnderecoNumero(),
+                cliente.getEnderecoBairro(),
+                cliente.getEnderecoCep(),
+                cliente.getEnderecoCidade(),
+                cliente.getEnderecoEstado(),
+                cliente.getPais(),
+                "Endereço informado no cadastro do cliente."
+        );
+        enderecoRepository.save(enderecoResidencial);
+
         return cliente;
     }
 
-    /** RF0024 — consulta com filtros combinados ou isolados por nome, CPF, e-mail e status. */
+    /** RF0024 — consulta com filtros combinados ou isolados por nome, CPF, e-mail, código do cliente e status. */
     @Transactional(readOnly = true)
-    public List<Cliente> consultar(String nome, String cpf, String email, StatusCliente status) {
+    public List<Cliente> consultar(String nome, String cpf, String email, String codigoCliente, StatusCliente status) {
         String cpfLimpo = (cpf == null || cpf.isBlank()) ? null : CpfValidator.somenteDigitos(cpf);
         String nomeFiltro = (nome == null || nome.isBlank()) ? null : nome;
         String emailFiltro = (email == null || email.isBlank()) ? null : email;
-        return repository.buscarComFiltros(nomeFiltro, cpfLimpo, emailFiltro, status);
+        String codigoFiltro = (codigoCliente == null || codigoCliente.isBlank()) ? null : codigoCliente;
+        return repository.buscarComFiltros(nomeFiltro, cpfLimpo, emailFiltro, codigoFiltro, status);
     }
 
     @Transactional(readOnly = true)
@@ -114,7 +137,9 @@ public class ClienteService {
         // Aqui passamos os novos campos da RN0023 exigidos pelo domínio Cliente
         cliente.atualizarDados(
                 req.nome(),
-                req.telefone(),
+                req.telefoneTipo(),
+                req.telefoneDdd(),
+                req.telefoneNumero(),
                 req.email(),
                 req.enderecoTipoResidencia(),  // NOVO CAMPO
                 req.enderecoTipoLogradouro(),  // NOVO CAMPO

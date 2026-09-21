@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
  * Entidade de domínio / persistência do Cliente.
  *
  * Campos obrigatórios de cadastro conforme RN0026 do DRS: gênero, nome,
- * data de nascimento, CPF, telefone, e-mail, senha e endereço residencial.
+ * data de nascimento, CPF, telefone (tipo, DDD e número), e-mail, senha e
+ * endereço residencial.
  */
 @Entity
 @Table(name = "cliente", uniqueConstraints = {
@@ -41,8 +42,15 @@ public class Cliente {
     @Column(nullable = false, length = 11)
     private String cpf;
 
-    @Column(nullable = false, length = 20)
-    private String telefone;
+    // --- Telefone (RN0026: tipo, DDD e número) ---
+    @Column(name = "telefone_tipo", nullable = false, length = 30)
+    private String telefoneTipo;
+
+    @Column(name = "telefone_ddd", nullable = false, length = 2)
+    private String telefoneDdd;
+
+    @Column(name = "telefone_numero", nullable = false, length = 9)
+    private String telefoneNumero;
 
     @Column(nullable = false, length = 150)
     private String email;
@@ -94,7 +102,8 @@ public class Cliente {
     protected Cliente() {}
 
     public Cliente(String codigoCliente, GeneroCliente genero, String nome, LocalDate dataNascimento,
-                   String cpf, String telefone, String email, String senhaHash,
+                   String cpf, String telefoneTipo, String telefoneDdd, String telefoneNumero,
+                   String email, String senhaHash,
                    String enderecoTipoResidencia, String enderecoTipoLogradouro,
                    String enderecoLogradouro, String enderecoNumero, String enderecoBairro,
                    String enderecoCep, String enderecoCidade, String enderecoEstado, String pais) {
@@ -103,7 +112,9 @@ public class Cliente {
         this.nome = nome;
         this.dataNascimento = dataNascimento;
         this.cpf = cpf;
-        this.telefone = telefone;
+        this.telefoneTipo = telefoneTipo;
+        this.telefoneDdd = telefoneDdd;
+        this.telefoneNumero = telefoneNumero;
         this.email = email;
         this.senhaHash = senhaHash;
         this.enderecoTipoResidencia = enderecoTipoResidencia;
@@ -134,12 +145,14 @@ public class Cliente {
         return this.status == StatusCliente.ATIVO;
     }
 
-    public void atualizarDados(String nome, String telefone, String email,
+    public void atualizarDados(String nome, String telefoneTipo, String telefoneDdd, String telefoneNumero, String email,
                                String enderecoTipoResidencia, String enderecoTipoLogradouro,
                                String enderecoLogradouro, String enderecoNumero, String enderecoBairro,
                                String enderecoCep, String enderecoCidade, String enderecoEstado, String pais) {
         this.nome = nome;
-        this.telefone = telefone;
+        this.telefoneTipo = telefoneTipo;
+        this.telefoneDdd = telefoneDdd;
+        this.telefoneNumero = telefoneNumero;
         this.email = email;
         this.enderecoTipoResidencia = enderecoTipoResidencia;
         this.enderecoTipoLogradouro = enderecoTipoLogradouro;
@@ -167,7 +180,9 @@ public class Cliente {
     public String getNome() { return nome; }
     public LocalDate getDataNascimento() { return dataNascimento; }
     public String getCpf() { return cpf; }
-    public String getTelefone() { return telefone; }
+    public String getTelefoneTipo() { return telefoneTipo; }
+    public String getTelefoneDdd() { return telefoneDdd; }
+    public String getTelefoneNumero() { return telefoneNumero; }
     public String getEmail() { return email; }
     public String getSenhaHash() { return senhaHash; }
     public String getEnderecoTipoResidencia() { return enderecoTipoResidencia; }

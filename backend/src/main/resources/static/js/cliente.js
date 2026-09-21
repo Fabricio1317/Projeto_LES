@@ -163,7 +163,9 @@ function abrirModalAlterar(id) {
   const form = document.getElementById("form-alterar");
   form.elements["id"].value = cliente.id;
   form.elements["nome"].value = cliente.nome;
-  form.elements["telefone"].value = cliente.telefone;
+  form.elements["telefoneTipo"].value = cliente.telefoneTipo || "";
+  form.elements["telefoneDdd"].value = cliente.telefoneDdd || "";
+  form.elements["telefoneNumero"].value = cliente.telefoneNumero || "";
   form.elements["email"].value = cliente.email;
 
   // NOVOS CAMPOS ADICIONADOS AQUI

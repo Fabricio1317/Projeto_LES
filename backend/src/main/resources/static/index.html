@@ -45,8 +45,20 @@
           <label>CPF
             <input type="text" name="cpf" data-cy="input-cpf" placeholder="000.000.000-00" required>
           </label>
-          <label>Telefone
-            <input type="text" name="telefone" data-cy="input-telefone" placeholder="(00) 00000-0000" required>
+          <label>Tipo de telefone
+            <select name="telefoneTipo" data-cy="input-telefone-tipo" required>
+              <option value="">Selecione</option>
+              <option value="Celular">Celular</option>
+              <option value="Residencial">Residencial</option>
+              <option value="Comercial">Comercial</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>DDD
+            <input type="text" name="telefoneDdd" data-cy="input-telefone-ddd" placeholder="00" maxlength="2" required>
+          </label>
+          <label>Número
+            <input type="text" name="telefoneNumero" data-cy="input-telefone-numero" placeholder="000000000" required>
           </label>
           <label>E-mail
             <input type="email" name="email" data-cy="input-email" required>
@@ -128,6 +140,9 @@
       <label>E-mail
         <input type="text" name="email" data-cy="filtro-email">
       </label>
+      <label>Código do cliente
+        <input type="text" name="codigoCliente" data-cy="filtro-codigo">
+      </label>
       <label>Status
         <select name="status" data-cy="filtro-status">
           <option value="">Todos</option>
@@ -171,8 +186,20 @@
           <label>Nome
             <input type="text" name="nome" data-cy="alterar-nome" required>
           </label>
-          <label>Telefone
-            <input type="text" name="telefone" data-cy="alterar-telefone" required>
+          <label>Tipo de telefone
+            <select name="telefoneTipo" data-cy="alterar-telefone-tipo" required>
+              <option value="">Selecione</option>
+              <option value="Celular">Celular</option>
+              <option value="Residencial">Residencial</option>
+              <option value="Comercial">Comercial</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>DDD
+            <input type="text" name="telefoneDdd" data-cy="alterar-telefone-ddd" maxlength="2" required>
+          </label>
+          <label>Número
+            <input type="text" name="telefoneNumero" data-cy="alterar-telefone-numero" required>
           </label>
           <label>E-mail
             <input type="email" name="email" data-cy="alterar-email" required>

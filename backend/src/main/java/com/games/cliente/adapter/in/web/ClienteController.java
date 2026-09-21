@@ -40,8 +40,9 @@ public class ClienteController {
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String cpf,
             @RequestParam(required = false) String email,
+            @RequestParam(required = false) String codigoCliente,
             @RequestParam(required = false) StatusCliente status) {
-        List<ClienteResponse> resultado = service.consultar(nome, cpf, email, status)
+        List<ClienteResponse> resultado = service.consultar(nome, cpf, email, codigoCliente, status)
                 .stream().map(ClienteResponse::from).toList();
         return ResponseEntity.ok(resultado);
     }

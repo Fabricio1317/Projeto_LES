@@ -11,8 +11,8 @@ import java.util.Optional;
 
 /**
  * RF0024 — consulta de clientes com filtros combinados ou isolados por
- * nome, CPF, e-mail e status. Qualquer parâmetro pode ser omitido (null),
- * caso em que a consulta ignora aquele filtro.
+ * nome, CPF, e-mail, código do cliente e status. Qualquer parâmetro pode
+ * ser omitido (null), caso em que a consulta ignora aquele filtro.
  */
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
@@ -31,11 +31,13 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
         WHERE (CAST(:nome AS String) IS NULL OR LOWER(c.nome) LIKE LOWER(CONCAT('%', CAST(:nome AS String), '%')))
           AND (CAST(:cpf AS String) IS NULL OR c.cpf = CAST(:cpf AS String))
           AND (CAST(:email AS String) IS NULL OR LOWER(c.email) = LOWER(CAST(:email AS String)))
+          AND (CAST(:codigoCliente AS String) IS NULL OR LOWER(c.codigoCliente) = LOWER(CAST(:codigoCliente AS String)))
           AND (CAST(:status AS String) IS NULL OR c.status = :status)
         ORDER BY c.nome ASC
         """)
     List<Cliente> buscarComFiltros(@Param("nome") String nome,
                                    @Param("cpf") String cpf,
                                    @Param("email") String email,
+                                   @Param("codigoCliente") String codigoCliente,
                                    @Param("status") StatusCliente status);
 }

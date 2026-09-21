@@ -12,7 +12,9 @@ function clienteValidoPadrao(overrides = {}) {
     genero: "FEMININO",
     dataNascimento: "1995-05-20",
     cpf: formatarCpf(cpf),
-    telefone: "11999998888",
+    telefoneTipo: "Celular",
+    telefoneDdd: "11",
+    telefoneNumero: "999998888",
     email: `maria.${cpf}@example.com`,
     senha: "Senha@Forte1",
     confirmacaoSenha: "Senha@Forte1",
@@ -45,9 +47,14 @@ function preencherFormularioCadastro(dados) {
     cy.get('[data-cy=input-cpf]').clear();
     if (dados.cpf !== "") cy.get('[data-cy=input-cpf]').type(dados.cpf);
   }
-  if (dados.telefone !== undefined) {
-    cy.get('[data-cy=input-telefone]').clear();
-    if (dados.telefone !== "") cy.get('[data-cy=input-telefone]').type(dados.telefone);
+  if (dados.telefoneTipo !== undefined) { if (dados.telefoneTipo !== "") cy.get('[data-cy=input-telefone-tipo]').select(dados.telefoneTipo); }
+  if (dados.telefoneDdd !== undefined) {
+    cy.get('[data-cy=input-telefone-ddd]').clear();
+    if (dados.telefoneDdd !== "") cy.get('[data-cy=input-telefone-ddd]').type(dados.telefoneDdd);
+  }
+  if (dados.telefoneNumero !== undefined) {
+    cy.get('[data-cy=input-telefone-numero]').clear();
+    if (dados.telefoneNumero !== "") cy.get('[data-cy=input-telefone-numero]').type(dados.telefoneNumero);
   }
   if (dados.email !== undefined) {
     cy.get('[data-cy=input-email]').clear();
@@ -191,7 +198,9 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
     it("RN0026 — não deve cadastrar cliente sem telefone e e-mail (campos de contato obrigatórios)", () => {
       cy.get('[data-cy=nav-cadastro]').click();
       const dadosIncompletos = clienteValidoPadrao();
-      delete dadosIncompletos.telefone;
+      delete dadosIncompletos.telefoneTipo;
+      delete dadosIncompletos.telefoneDdd;
+      delete dadosIncompletos.telefoneNumero;
       delete dadosIncompletos.email;
 
       preencherFormularioCadastro(dadosIncompletos);
@@ -240,6 +249,25 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
       cy.get('[data-cy=tbody-clientes] [data-cy=linha-cliente]').should("have.length", 1);
     });
 
+    it("RF0024 — deve filtrar clientes isoladamente pelo código do cliente", () => {
+      const nomeUnico = "Cliente Codigo Teste " + Date.now();
+      cadastrarViaUI(clienteValidoPadrao({nome: nomeUnico}));
+
+      cy.get('[data-cy=nav-consulta]').click();
+      cy.get('[data-cy=filtro-nome]').type(nomeUnico);
+      cy.get('[data-cy=btn-filtrar]').click();
+
+      // Lê o código gerado para o cliente recém-cadastrado (1ª coluna da tabela)
+      cy.get('[data-cy=tbody-clientes] [data-cy=linha-cliente]').first().find('td').first().invoke('text').then((codigo) => {
+        cy.get('[data-cy=filtro-nome]').clear();
+        cy.get('[data-cy=filtro-codigo]').clear().type(codigo.trim());
+        cy.get('[data-cy=btn-filtrar]').click();
+
+        cy.get('[data-cy=tbody-clientes] [data-cy=linha-cliente]').should("have.length", 1);
+        cy.get('[data-cy=tbody-clientes]').should("contain.text", nomeUnico);
+      });
+    });
+
     it("RF0024 — deve combinar múltiplos filtros (nome + status)", () => {
       const nomeUnico = "Combinado Teste " + Date.now();
       cadastrarViaUI(clienteValidoPadrao({nome: nomeUnico}));
@@ -270,7 +298,9 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
 
       cy.get('[data-cy=modal-alterar]').should("be.visible");
       cy.get('[data-cy=alterar-nome]').clear().type("Nome Alterado");
-      cy.get('[data-cy=alterar-telefone]').clear().type("11888887777");
+      cy.get('[data-cy=alterar-telefone-tipo]').select("Comercial");
+      cy.get('[data-cy=alterar-telefone-ddd]').clear().type("11");
+      cy.get('[data-cy=alterar-telefone-numero]').clear().type("888887777");
       cy.get('[data-cy=btn-salvar-alterar]').click();
 
       cy.get('[data-cy=modal-alterar]').should("not.be.visible");
@@ -467,16 +497,15 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
         cadastrarViaUI(clienteValidoPadrao({nome: nomeUnico}));
         abrirEnderecosDoCliente(nomeUnico);
 
-        // 1. Criamos um endereço exclusivo de COBRANÇA para satisfazer o backend e ele não lançar a RN0021
+        // O cadastro já cria automaticamente o endereço "Residencial" (AMBOS),
+        // que aparece nesta tela e cobre cobrança e entrega. Adicionamos um
+        // endereço exclusivo de COBRANÇA para que o "Residencial" passe a ser
+        // o único endereço de ENTREGA do cliente.
         preencherEAdicionarEndereco({apelido: "Casa", tipo: "COBRANCA"});
 
-        // 2. Criamos o nosso único endereço de ENTREGA
-        preencherEAdicionarEndereco({apelido: "Trabalho", tipo: "ENTREGA"});
+        cy.contains('[data-cy=linha-endereco]', "Residencial").find('[data-cy=btn-remover-endereco]').click();
 
-        // 3. Mandamos apagar especificamente a linha do endereço de ENTREGA
-        cy.contains('[data-cy=linha-endereco]', "Trabalho").find('[data-cy=btn-remover-endereco]').click();
-
-        // Agora sim, o backend passa ileso pela RN0021 e estoura exatamente a RN0022
+        // Estoura a RN0022, pois remover o "Residencial" deixaria o cliente sem endereço de entrega
         cy.get('[data-cy=mensagem]').should("contain.text", "RN0022");
       });
 
@@ -485,16 +514,13 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
         cadastrarViaUI(clienteValidoPadrao({nome: nomeUnico}));
         abrirEnderecosDoCliente(nomeUnico);
 
-        // 1. Criamos um endereço exclusivo de ENTREGA
+        // O "Residencial" automático (AMBOS) cobre cobrança e entrega. Adicionamos
+        // um endereço exclusivo de ENTREGA para que ele passe a ser o único de COBRANÇA.
         preencherEAdicionarEndereco({apelido: "Trabalho", tipo: "ENTREGA"});
 
-        // 2. Criamos o nosso único endereço de COBRANÇA
-        preencherEAdicionarEndereco({apelido: "Casa", tipo: "COBRANCA"});
+        cy.contains('[data-cy=linha-endereco]', "Residencial").find('[data-cy=btn-remover-endereco]').click();
 
-        // 3. Mandamos apagar especificamente a linha do endereço de COBRANÇA
-        cy.contains('[data-cy=linha-endereco]', "Casa").find('[data-cy=btn-remover-endereco]').click();
-
-        // Como esperado, vai estourar a RN0021
+        // Estoura a RN0021, pois remover o "Residencial" deixaria o cliente sem endereço de cobrança
         cy.get('[data-cy=mensagem]').should("contain.text", "RN0021");
       });
 
@@ -502,7 +528,8 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
         const nomeUnico = "Cliente Dois Enderecos " + Date.now();
         cadastrarViaUI(clienteValidoPadrao({nome: nomeUnico}));
         abrirEnderecosDoCliente(nomeUnico);
-        preencherEAdicionarEndereco({apelido: "Casa", tipo: "AMBOS"});
+
+        // O cadastro já cria o "Residencial" (AMBOS); adicionamos mais um endereço.
         preencherEAdicionarEndereco({apelido: "Trabalho", tipo: "ENTREGA"});
 
         cy.get('[data-cy=tbody-enderecos] [data-cy=linha-endereco]').should("have.length", 2);
