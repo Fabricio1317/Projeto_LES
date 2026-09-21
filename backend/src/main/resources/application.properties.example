@@ -1,0 +1,14 @@
+spring.application.name=nexus-cliente-crud
+server.port=8080
+
+# Conexão com o PostgreSQL
+spring.datasource.url=jdbc:postgresql://localhost:5432/postgres?stringtype=unspecified
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.datasource.username=postgres
+spring.datasource.password=SUA_SENHA_AQUI
+
+# Configuração do Hibernate/JPA
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect

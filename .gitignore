@@ -1,0 +1,21 @@
+# Node
+node_modules/
+
+# Cypress artifacts
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Maven / Java build output
+backend/target/
+
+# IDE
+.idea/
+*.iml
+
+# Local secrets
+backend/src/main/resources/application.properties
+
+# OS
+Thumbs.db
+.DS_Store

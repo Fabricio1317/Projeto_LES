@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — Gestão de Clientes</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Nexus <span>·</span> Gestão de Clientes</h1>
+  <nav>
+    <button class="tab-btn active" data-tab="tab-cadastro" data-cy="nav-cadastro">Cadastrar</button>
+    <button class="tab-btn" data-tab="tab-consulta" data-cy="nav-consulta">Consultar</button>
+    <button class="tab-btn" data-tab="tab-auditoria" data-cy="nav-auditoria">Auditoria</button>
+  </nav>
+</header>
+
+<main>
+  <div id="mensagem" class="mensagem" data-cy="mensagem" hidden></div>
+
+  <!-- ===================== CADASTRAR (RF0021) ===================== -->
+  <section id="tab-cadastro" class="tab-content">
+    <h2>Cadastrar cliente</h2>
+    <form id="form-cadastro" data-cy="form-cadastro" novalidate>
+      <fieldset>
+        <legend>Dados pessoais</legend>
+        <div class="grid">
+          <label>Nome
+            <input type="text" name="nome" data-cy="input-nome" required>
+          </label>
+          <label>Gênero
+            <select name="genero" data-cy="input-genero" required>
+              <option value="">Selecione</option>
+              <option value="FEMININO">Feminino</option>
+              <option value="MASCULINO">Masculino</option>
+              <option value="OUTRO">Outro</option>
+              <option value="PREFIRO_NAO_INFORMAR">Prefiro não informar</option>
+            </select>
+          </label>
+          <label>Data de nascimento
+            <input type="date" name="dataNascimento" data-cy="input-data-nascimento" required>
+          </label>
+          <label>CPF
+            <input type="text" name="cpf" data-cy="input-cpf" placeholder="000.000.000-00" required>
+          </label>
+          <label>Telefone
+            <input type="text" name="telefone" data-cy="input-telefone" placeholder="(00) 00000-0000" required>
+          </label>
+          <label>E-mail
+            <input type="email" name="email" data-cy="input-email" required>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Senha</legend>
+        <div class="grid">
+          <label>Senha
+            <input type="password" name="senha" data-cy="input-senha" required>
+          </label>
+          <label>Confirmação de senha
+            <input type="password" name="confirmacaoSenha" data-cy="input-confirmacao-senha" required>
+          </label>
+        </div>
+        <p class="hint">Mínimo de 8 caracteres, com maiúscula, minúscula e caractere especial.</p>
+      </fieldset>
+          <fieldset>
+            <legend>Endereço residencial</legend>
+            <div class="grid">
+              <label>Tipo de residência
+                <select name="enderecoTipoResidencia" data-cy="input-tipo-residencia" required>
+                  <option value="">Selecione</option>
+                  <option value="Casa">Casa</option>
+                  <option value="Apartamento">Apartamento</option>
+                  <option value="Condominio">Condomínio</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </label>
+              <label>Tipo logradouro
+                <select name="enderecoTipoLogradouro" data-cy="input-tipo-logradouro" required>
+                  <option value="">Selecione</option>
+                  <option value="Rua">Rua</option>
+                  <option value="Avenida">Avenida</option>
+                  <option value="Travessa">Travessa</option>
+                  <option value="Rodovia">Rodovia</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </label>
+              <label>País
+                <input type="text" name="pais" data-cy="input-pais" required>
+              </label>
+          <label>Logradouro
+            <input type="text" name="enderecoLogradouro" data-cy="input-logradouro" required>
+          </label>
+          <label>Número
+            <input type="text" name="enderecoNumero" data-cy="input-numero" required>
+          </label>
+          <label>Bairro
+            <input type="text" name="enderecoBairro" data-cy="input-bairro" required>
+          </label>
+          <label>CEP
+            <input type="text" name="enderecoCep" data-cy="input-cep" placeholder="00000000" required>
+          </label>
+          <label>Cidade
+            <input type="text" name="enderecoCidade" data-cy="input-cidade" required>
+          </label>
+          <label>Estado (UF)
+            <input type="text" name="enderecoEstado" data-cy="input-estado" maxlength="2" required>
+          </label>
+        </div>
+      </fieldset>
+      <button type="submit" class="btn-primary" data-cy="btn-cadastrar">Cadastrar cliente</button>
+    </form>
+  </section>
+
+  <!-- ===================== CONSULTAR (RF0024) ===================== -->
+  <section id="tab-consulta" class="tab-content" hidden>
+    <h2>Consultar clientes</h2>
+    <form id="form-filtros" data-cy="form-filtros" class="filtros">
+      <label>Nome
+        <input type="text" name="nome" data-cy="filtro-nome">
+      </label>
+      <label>CPF
+        <input type="text" name="cpf" data-cy="filtro-cpf">
+      </label>
+      <label>E-mail
+        <input type="text" name="email" data-cy="filtro-email">
+      </label>
+      <label>Status
+        <select name="status" data-cy="filtro-status">
+          <option value="">Todos</option>
+          <option value="ATIVO">Ativo</option>
+          <option value="INATIVO">Inativo</option>
+        </select>
+      </label>
+      <button type="submit" class="btn-secondary" data-cy="btn-filtrar">Filtrar</button>
+    </form>
+
+    <table class="tabela-clientes" data-cy="tabela-clientes">
+      <thead>
+        <tr>
+          <th>Código</th><th>Nome</th><th>CPF</th><th>E-mail</th>
+          <th>Ranking</th><th>Status</th><th class="col-acoes">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-clientes" data-cy="tbody-clientes"></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== AUDITORIA (RNF0012) ===================== -->
+  <section id="tab-auditoria" class="tab-content" hidden>
+    <h2>Log de auditoria</h2>
+    <p class="hint">Toda inserção ou alteração de Cliente, Endereço ou Cartão gera um registro aqui, com data, hora, usuário responsável e o dado alterado.</p>
+    <table class="tabela-clientes" data-cy="tabela-auditoria">
+      <thead>
+        <tr><th>Data/Hora</th><th>Entidade</th><th>Operação</th><th>Usuário</th><th>Dado alterado</th></tr>
+      </thead>
+      <tbody id="tbody-auditoria" data-cy="tbody-auditoria"></tbody>
+    </table>
+  </section>
+
+  <!-- ===================== ALTERAR (RF0022) - modal ===================== -->
+  <div id="modal-alterar" class="modal" hidden data-cy="modal-alterar">
+    <div class="modal-box">
+      <h2>Alterar dados do cliente</h2>
+      <form id="form-alterar" data-cy="form-alterar">
+        <input type="hidden" name="id" data-cy="alterar-id">
+        <div class="grid">
+          <label>Nome
+            <input type="text" name="nome" data-cy="alterar-nome" required>
+          </label>
+          <label>Telefone
+            <input type="text" name="telefone" data-cy="alterar-telefone" required>
+          </label>
+          <label>E-mail
+            <input type="email" name="email" data-cy="alterar-email" required>
+          </label>
+          <label>Tipo de residência
+            <select name="enderecoTipoResidencia" data-cy="alterar-tipo-residencia" required>
+              <option value="">Selecione</option>
+              <option value="Casa">Casa</option>
+              <option value="Apartamento">Apartamento</option>
+              <option value="Condominio">Condomínio</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>Tipo logradouro
+            <select name="enderecoTipoLogradouro" data-cy="alterar-tipo-logradouro" required>
+              <option value="">Selecione</option>
+              <option value="Rua">Rua</option>
+              <option value="Avenida">Avenida</option>
+              <option value="Travessa">Travessa</option>
+              <option value="Rodovia">Rodovia</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>País
+            <input type="text" name="pais" data-cy="alterar-pais" required>
+          </label>
+          <label>Logradouro
+            <input type="text" name="enderecoLogradouro" data-cy="alterar-logradouro" required>
+          </label>
+          <label>Número
+            <input type="text" name="enderecoNumero" data-cy="alterar-numero" required>
+          </label>
+          <label>Bairro
+            <input type="text" name="enderecoBairro" data-cy="alterar-bairro" required>
+          </label>
+          <label>CEP
+            <input type="text" name="enderecoCep" data-cy="alterar-cep" required>
+          </label>
+          <label>Cidade
+            <input type="text" name="enderecoCidade" data-cy="alterar-cidade" required>
+          </label>
+          <label>Estado (UF)
+            <input type="text" name="enderecoEstado" data-cy="alterar-estado" maxlength="2" required>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btn-cancelar-alterar" class="btn-secondary" data-cy="btn-cancelar-alterar">Cancelar</button>
+          <button type="submit" class="btn-primary" data-cy="btn-salvar-alterar">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== ENDEREÇOS (RF0026) - modal ===================== -->
+  <div id="modal-enderecos" class="modal" hidden data-cy="modal-enderecos">
+    <div class="modal-box">
+      <h2>Endereços do cliente</h2>
+      <p class="hint">O cliente deve manter sempre ao menos um endereço de cobrança e um de entrega.</p>
+      <input type="hidden" id="enderecos-cliente-id" data-cy="enderecos-cliente-id">
+
+      <table class="tabela-clientes" data-cy="tabela-enderecos">
+        <thead><tr><th>Apelido</th><th>Tipo</th><th>Endereço</th><th class="col-acoes">Ações</th></tr></thead>
+        <tbody id="tbody-enderecos" data-cy="tbody-enderecos"></tbody>
+      </table>
+
+      <h3>Adicionar endereço</h3>
+      <form id="form-endereco" data-cy="form-endereco">
+        <div class="grid">
+          <label>Apelido
+            <input type="text" name="apelido" data-cy="endereco-apelido" required>
+          </label>
+          <label>Tipo
+            <select name="tipo" data-cy="endereco-tipo" required>
+              <option value="">Selecione</option>
+              <option value="COBRANCA">Cobrança</option>
+              <option value="ENTREGA">Entrega</option>
+              <option value="AMBOS">Ambos</option>
+            </select>
+          </label>
+
+          <!-- Novos campos da RN0023 -->
+          <label>Tipo de residência
+            <select name="tipoResidencia" data-cy="endereco-tipo-residencia" required>
+              <option value="">Selecione</option>
+              <option value="Casa">Casa</option>
+              <option value="Apartamento">Apartamento</option>
+              <option value="Condominio">Condomínio</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <label>Tipo de logradouro
+            <select name="tipoLogradouro" data-cy="endereco-tipo-logradouro" required>
+              <option value="">Selecione</option>
+              <option value="Rua">Rua</option>
+              <option value="Avenida">Avenida</option>
+              <option value="Travessa">Travessa</option>
+              <option value="Rodovia">Rodovia</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+          <!-- Fim dos novos campos (Selects) -->
+
+          <label>Logradouro
+            <input type="text" name="logradouro" data-cy="endereco-logradouro" required>
+          </label>
+          <label>Número
+            <input type="text" name="numero" data-cy="endereco-numero" required>
+          </label>
+          <label>Bairro
+            <input type="text" name="bairro" data-cy="endereco-bairro" required>
+          </label>
+          <label>CEP
+            <input type="text" name="cep" data-cy="endereco-cep" required>
+          </label>
+          <label>Cidade
+            <input type="text" name="cidade" data-cy="endereco-cidade" required>
+          </label>
+          <label>Estado (UF)
+            <input type="text" name="estado" data-cy="endereco-estado" maxlength="2" required>
+          </label>
+
+          <!-- Novo campo da RN0023 -->
+          <label>País
+            <input type="text" name="pais" data-cy="endereco-pais" required>
+          </label>
+          <!-- Fim do novo campo -->
+
+          <label>Observações
+            <input type="text" name="observacoes" data-cy="endereco-observacoes">
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btn-fechar-enderecos" class="btn-secondary" data-cy="btn-fechar-enderecos">Fechar</button>
+          <button type="submit" class="btn-primary" data-cy="btn-adicionar-endereco">Adicionar endereço</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- ===================== CARTÕES (RF0027) - modal ===================== -->
+  <div id="modal-cartoes" class="modal" hidden data-cy="modal-cartoes">
+    <div class="modal-box">
+      <h2>Cartões de crédito do cliente</h2>
+      <input type="hidden" id="cartoes-cliente-id" data-cy="cartoes-cliente-id">
+
+      <table class="tabela-clientes" data-cy="tabela-cartoes">
+        <thead><tr><th>Número</th><th>Nome impresso</th><th>Bandeira</th><th>Preferencial</th><th class="col-acoes">Ações</th></tr></thead>
+        <tbody id="tbody-cartoes" data-cy="tbody-cartoes"></tbody>
+      </table>
+
+      <h3>Adicionar cartão</h3>
+      <form id="form-cartao" data-cy="form-cartao">
+        <div class="grid">
+          <label>Número
+            <input type="text" name="numero" data-cy="cartao-numero" placeholder="0000000000000000" required>
+          </label>
+          <label>Nome impresso
+            <input type="text" name="nomeImpresso" data-cy="cartao-nome" required>
+          </label>
+          <label>Bandeira
+            <select name="bandeira" data-cy="cartao-bandeira" required>
+              <option value="">Selecione</option>
+              <option value="VISA">Visa</option>
+              <option value="MASTERCARD">Mastercard</option>
+              <option value="ELO">Elo</option>
+              <option value="AMERICAN_EXPRESS">American Express</option>
+              <option value="HIPERCARD">Hipercard</option>
+            </select>
+          </label>
+          <label>Código de segurança
+            <input type="text" name="codigoSeguranca" data-cy="cartao-cvv" maxlength="4" required>
+          </label>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" name="preferencial" data-cy="cartao-preferencial">
+          Definir como cartão preferencial
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="btn-fechar-cartoes" class="btn-secondary" data-cy="btn-fechar-cartoes">Fechar</button>
+          <button type="submit" class="btn-primary" data-cy="btn-adicionar-cartao">Adicionar cartão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== SENHA (RF0028) - modal ===================== -->
+  <div id="modal-senha" class="modal" hidden data-cy="modal-senha">
+    <div class="modal-box">
+      <h2>Alterar senha</h2>
+      <form id="form-senha" data-cy="form-senha">
+        <input type="hidden" name="id" data-cy="senha-cliente-id">
+        <div class="grid">
+          <label>Senha atual
+            <input type="password" name="senhaAtual" data-cy="senha-atual" required>
+          </label>
+          <label>Nova senha
+            <input type="password" name="novaSenha" data-cy="senha-nova" required>
+          </label>
+          <label>Confirmação da nova senha
+            <input type="password" name="confirmacaoNovaSenha" data-cy="senha-confirmacao" required>
+          </label>
+        </div>
+        <p class="hint">Mínimo de 8 caracteres, com maiúscula, minúscula e caractere especial.</p>
+        <div class="modal-actions">
+          <button type="button" id="btn-cancelar-senha" class="btn-secondary" data-cy="btn-cancelar-senha">Cancelar</button>
+          <button type="submit" class="btn-primary" data-cy="btn-salvar-senha">Salvar nova senha</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/api-client.js"></script>
+<script src="js/cliente.js"></script>
+</body>
+</html>
