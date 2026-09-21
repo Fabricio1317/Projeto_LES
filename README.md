@@ -17,7 +17,7 @@ nexus-crud/
 │       └── adapter/
 │           ├── in/web/          # ClienteController, EnderecoController, CartaoController, AuditoriaController, GlobalExceptionHandler, dto/
 │           └── out/persistence/ # ClienteRepository, EnderecoRepository, CartaoRepository, LogTransacaoRepository (Spring Data JPA)
-│       resources/                # application.properties (H2 em memória)
+│       resources/                # application.properties
 │       test/java/...            # testes unitários (JUnit + Mockito) do ClienteService
 ├── cypress/
 │   ├── e2e/cliente-crud.cy.js   # suíte de testes de interface (29 testes)
@@ -28,15 +28,12 @@ nexus-crud/
 
 ## Como executar
 
-### 1. Backend (H2 em memória, zero configuração externa)
+### 1. Backend
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
-
-Console H2 disponível em `http://localhost:8080/h2-console`
-(JDBC URL: `jdbc:h2:mem:nexusdb`, usuário `sa`, sem senha).
 
 ### 2. Testes automatizados de interface (Cypress)
 
