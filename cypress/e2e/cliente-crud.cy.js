@@ -428,6 +428,11 @@ describe("Módulo de Gestão de Clientes — Nexus", () => {
         cy.get('[data-cy=endereco-estado]').clear().type(estado);
 
         cy.get('[data-cy=btn-adicionar-endereco]').click();
+
+        // Aguarda o POST terminar e a tabela ser recarregada antes de seguir,
+        // evitando corrida com ações seguintes (ex.: remover endereço).
+        cy.get('[data-cy=mensagem]').should("contain.text", "Endereço adicionado com sucesso");
+        cy.contains('[data-cy=linha-endereco]', apelido).should("exist");
       }
       it("RF0026 — deve adicionar um endereço de cobrança ao cliente", () => {
         const nomeUnico = "Cliente Endereco " + Date.now();
