@@ -124,7 +124,6 @@ public class ClienteService {
     }
 
     /** RF0022 — altera os dados cadastrais do cliente (exceto CPF e senha). */
-    /** RF0022 — altera os dados cadastrais do cliente (exceto CPF e senha). */
     @Transactional
     public Cliente alterar(Long id, AlterarClienteRequest req) {
         Cliente cliente = buscarPorId(id);
