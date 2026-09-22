@@ -1,7 +1,7 @@
 package com.games.cliente.adapter.out.persistence;
 
-import com.games.cliente.domain.Cliente;
-import com.games.cliente.domain.StatusCliente;
+import com.games.cliente.domain.entity.Cliente;
+import com.games.cliente.domain.enums.StatusCliente;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

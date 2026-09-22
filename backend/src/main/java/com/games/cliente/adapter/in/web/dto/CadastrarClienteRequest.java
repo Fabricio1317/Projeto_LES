@@ -1,6 +1,6 @@
 package com.games.cliente.adapter.in.web.dto;
 
-import com.games.cliente.domain.GeneroCliente;
+import com.games.cliente.domain.enums.GeneroCliente;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 

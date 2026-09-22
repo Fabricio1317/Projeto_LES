@@ -1,4 +1,4 @@
-package com.games.cliente.domain;
+package com.games.cliente.domain.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

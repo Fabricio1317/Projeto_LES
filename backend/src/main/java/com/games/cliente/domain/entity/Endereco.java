@@ -1,5 +1,6 @@
-package com.games.cliente.domain;
+package com.games.cliente.domain.entity;
 
+import com.games.cliente.domain.enums.TipoEndereco;
 import jakarta.persistence.*;
 
 /**

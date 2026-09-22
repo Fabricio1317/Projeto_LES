@@ -2,8 +2,8 @@ package com.games.cliente.adapter.in.web;
 
 import com.games.cliente.adapter.in.web.dto.*;
 import com.games.cliente.application.ClienteService;
-import com.games.cliente.domain.Cliente;
-import com.games.cliente.domain.StatusCliente;
+import com.games.cliente.domain.entity.Cliente;
+import com.games.cliente.domain.enums.StatusCliente;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -70,7 +70,7 @@ public class ClienteController {
     /**
      * RF0023 — inativar cliente. Implementado como PATCH (mudança de estado),
      * nunca como DELETE físico — não existe endpoint de exclusão neste módulo
-     * (ver javadoc de {@link com.games.cliente.domain.StatusCliente}).
+     * (ver javadoc de {@link com.games.cliente.domain.enums.StatusCliente}).
      */
     @PatchMapping("/{id}/inativar")
     public ResponseEntity<ClienteResponse> inativar(@PathVariable Long id) {

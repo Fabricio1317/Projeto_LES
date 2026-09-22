@@ -1,7 +1,7 @@
 package com.games.cliente.adapter.in.web.dto;
 
-import com.games.cliente.domain.Endereco;
-import com.games.cliente.domain.TipoEndereco;
+import com.games.cliente.domain.entity.Endereco;
+import com.games.cliente.domain.enums.TipoEndereco;
 
 public record EnderecoResponse(
         Long id, Long clienteId, String apelido, TipoEndereco tipo,

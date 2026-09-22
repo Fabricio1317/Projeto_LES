@@ -1,6 +1,6 @@
 package com.games.cliente.adapter.in.web.dto;
 
-import com.games.cliente.domain.TipoEndereco;
+import com.games.cliente.domain.enums.TipoEndereco;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

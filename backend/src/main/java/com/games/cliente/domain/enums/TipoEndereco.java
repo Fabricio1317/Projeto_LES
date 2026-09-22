@@ -1,4 +1,4 @@
-package com.games.cliente.domain;
+package com.games.cliente.domain.enums;
 
 /**
  * Tipo de um endereço cadastrado pelo cliente (RF0026).

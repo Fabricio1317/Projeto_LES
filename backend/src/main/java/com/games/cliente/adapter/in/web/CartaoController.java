@@ -3,7 +3,7 @@ package com.games.cliente.adapter.in.web;
 import com.games.cliente.adapter.in.web.dto.CartaoRequest;
 import com.games.cliente.adapter.in.web.dto.CartaoResponse;
 import com.games.cliente.application.CartaoService;
-import com.games.cliente.domain.Cartao;
+import com.games.cliente.domain.entity.Cartao;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

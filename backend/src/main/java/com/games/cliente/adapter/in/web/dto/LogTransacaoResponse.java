@@ -1,6 +1,6 @@
 package com.games.cliente.adapter.in.web.dto;
 
-import com.games.cliente.domain.LogTransacao;
+import com.games.cliente.domain.entity.LogTransacao;
 import java.time.LocalDateTime;
 
 public record LogTransacaoResponse(

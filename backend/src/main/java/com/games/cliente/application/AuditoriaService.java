@@ -1,7 +1,7 @@
 package com.games.cliente.application;
 
 import com.games.cliente.adapter.out.persistence.LogTransacaoRepository;
-import com.games.cliente.domain.LogTransacao;
+import com.games.cliente.domain.entity.LogTransacao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

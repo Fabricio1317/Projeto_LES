@@ -1,6 +1,6 @@
 package com.games.cliente.adapter.out.persistence;
 
-import com.games.cliente.domain.LogTransacao;
+import com.games.cliente.domain.entity.LogTransacao;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

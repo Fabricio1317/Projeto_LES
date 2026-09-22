@@ -1,8 +1,8 @@
 package com.games.cliente.adapter.in.web.dto;
 
-import com.games.cliente.domain.Cliente;
-import com.games.cliente.domain.GeneroCliente;
-import com.games.cliente.domain.StatusCliente;
+import com.games.cliente.domain.entity.Cliente;
+import com.games.cliente.domain.enums.GeneroCliente;
+import com.games.cliente.domain.enums.StatusCliente;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

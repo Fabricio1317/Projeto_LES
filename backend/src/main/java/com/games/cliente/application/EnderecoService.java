@@ -6,8 +6,8 @@ import com.games.cliente.adapter.out.persistence.EnderecoRepository;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
 import com.games.cliente.application.exception.RecursoNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;
-import com.games.cliente.domain.Endereco;
-import com.games.cliente.domain.TipoEndereco;
+import com.games.cliente.domain.entity.Endereco;
+import com.games.cliente.domain.enums.TipoEndereco;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

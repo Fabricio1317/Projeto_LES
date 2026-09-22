@@ -1,5 +1,7 @@
-package com.games.cliente.domain;
+package com.games.cliente.domain.entity;
 
+import com.games.cliente.domain.enums.GeneroCliente;
+import com.games.cliente.domain.enums.StatusCliente;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

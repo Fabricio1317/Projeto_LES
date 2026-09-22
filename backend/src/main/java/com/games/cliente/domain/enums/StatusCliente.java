@@ -1,4 +1,4 @@
-package com.games.cliente.domain;
+package com.games.cliente.domain.enums;
 
 /**
  * Status do cadastro do cliente.

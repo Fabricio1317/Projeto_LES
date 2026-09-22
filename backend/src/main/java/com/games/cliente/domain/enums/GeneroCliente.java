@@ -1,4 +1,4 @@
-package com.games.cliente.domain;
+package com.games.cliente.domain.enums;
 
 /** Gênero do cliente — campo obrigatório no cadastro (RN0026). */
 public enum GeneroCliente {

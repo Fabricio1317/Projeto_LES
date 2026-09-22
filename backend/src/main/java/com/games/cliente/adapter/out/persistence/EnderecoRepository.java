@@ -1,7 +1,7 @@
 package com.games.cliente.adapter.out.persistence;
 
-import com.games.cliente.domain.Endereco;
-import com.games.cliente.domain.TipoEndereco;
+import com.games.cliente.domain.entity.Endereco;
+import com.games.cliente.domain.enums.TipoEndereco;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

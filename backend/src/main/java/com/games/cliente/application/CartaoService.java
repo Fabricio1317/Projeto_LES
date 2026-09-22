@@ -6,7 +6,7 @@ import com.games.cliente.adapter.out.persistence.ClienteRepository;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
 import com.games.cliente.application.exception.RecursoNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;
-import com.games.cliente.domain.Cartao;
+import com.games.cliente.domain.entity.Cartao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
