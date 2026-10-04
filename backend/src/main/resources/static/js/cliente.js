@@ -12,7 +12,30 @@ const ICONS = {
   reativar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
   remover: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
   estrela: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  transacoes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-1 .7-3-2-3 2-3-2-3 2-3-2Z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>',
+  carrinho: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>',
+  salvar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
 };
+
+// --------------------- formatação compartilhada ---------------------
+function formatarMoeda(valor) {
+  return "R$ " + Number(valor || 0).toFixed(2).replace(".", ",");
+}
+function formatarData(iso) {
+  return new Date(iso).toLocaleString("pt-BR");
+}
+function statusPedidoBadge(p) {
+  return `<span class="status-badge ${p.status}" data-cy="status-pedido">${p.statusDescricao}</span>`;
+}
+function chipPlataforma(plataforma) {
+  const nome = plataforma.toLowerCase();
+  const familia = nome.includes("playstation") ? "ps" : nome.includes("xbox") ? "xbox"
+    : nome.includes("nintendo") ? "nintendo" : nome === "pc" ? "pc" : "";
+  return `<span class="chip-plataforma ${familia}">${plataforma}</span>`;
+}
+function seloClassificacao(classificacao) {
+  return `<span class="classind ci-${classificacao}" title="Classificação indicativa">${classificacao}</span>`;
+}
 
 function iconBtn({ icon, titulo, dataCy, id, variant = "", extraClass = "" }) {
   return `<button type="button" class="icon-btn ${variant} ${extraClass}" title="${titulo}" aria-label="${titulo}" data-cy="${dataCy}" data-id="${id}">${ICONS[icon]}</button>`;
@@ -110,6 +133,7 @@ function renderizarTabela(clientes) {
         ${iconBtn({ icon: "endereco", titulo: "Endereços", dataCy: "btn-enderecos", id: c.id })}
         ${iconBtn({ icon: "cartao", titulo: "Cartões", dataCy: "btn-cartoes", id: c.id })}
         ${iconBtn({ icon: "senha", titulo: "Alterar senha", dataCy: "btn-senha", id: c.id })}
+        ${iconBtn({ icon: "transacoes", titulo: "Transações", dataCy: "btn-transacoes", id: c.id })}
         ${acaoStatus}
       </td>`;
     tbody.appendChild(tr);
@@ -135,6 +159,8 @@ document.getElementById("tbody-clientes").addEventListener("click", async (ev) =
     abrirModalCartoes(id);
   } else if (btn.dataset.cy === "btn-senha") {
     abrirModalSenha(id);
+  } else if (btn.dataset.cy === "btn-transacoes") {
+    abrirModalTransacoes(id);
   } else if (btn.dataset.cy === "btn-inativar") {
     if (!confirm("Confirma a inativação deste cliente? O cadastro não será excluído, apenas marcado como inativo.")) return;
     try {
@@ -361,6 +387,34 @@ document.getElementById("form-senha").addEventListener("submit", async (ev) => {
   } catch (erro) {
     mostrarMensagem(mensagemDeErro(erro), "erro");
   }
+});
+
+// --------------------- transações (RF0025) ---------------------
+async function abrirModalTransacoes(clienteId) {
+  document.getElementById("modal-transacoes").hidden = false;
+  const tbody = document.getElementById("tbody-transacoes");
+  tbody.innerHTML = "";
+  try {
+    const pedidos = await PedidoApi.doCliente(clienteId);
+    document.getElementById("transacoes-vazio").hidden = pedidos.length > 0;
+    pedidos.forEach((p) => {
+      const tr = document.createElement("tr");
+      tr.dataset.cy = "linha-transacao";
+      tr.innerHTML = `
+        <td class="codigo">${p.codigo}</td>
+        <td class="data">${formatarData(p.dataCompra)}</td>
+        <td>${p.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+        <td class="preco">${formatarMoeda(p.total)}</td>
+        <td>${statusPedidoBadge(p)}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (erro) {
+    mostrarMensagem(mensagemDeErro(erro), "erro");
+  }
+}
+
+document.getElementById("btn-fechar-transacoes").addEventListener("click", () => {
+  document.getElementById("modal-transacoes").hidden = true;
 });
 
 // --------------------- auditoria (RNF0012) ---------------------

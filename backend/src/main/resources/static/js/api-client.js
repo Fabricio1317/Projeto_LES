@@ -3,8 +3,12 @@
 
 const API_BASE = "/api/clientes";
 
-async function apiRequest(path, options = {}) {
-  const resp = await fetch(API_BASE + path, {
+function apiRequest(path, options = {}) {
+  return apiRequestUrl(API_BASE + path, options);
+}
+
+async function apiRequestUrl(url, options = {}) {
+  const resp = await fetch(url, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -51,6 +55,49 @@ const CartaoApi = {
   cadastrar: (clienteId, payload) => apiRequest(`/${clienteId}/cartoes`, { method: "POST", body: JSON.stringify(payload) }),
   remover: (clienteId, cartaoId) => apiRequest(`/${clienteId}/cartoes/${cartaoId}`, { method: "DELETE" }),
   marcarPreferencial: (clienteId, cartaoId) => apiRequest(`/${clienteId}/cartoes/${cartaoId}/preferencial`, { method: "PATCH" }),
+};
+
+// ===================== Vendas =====================
+const json = (method, body) => ({ method, body: JSON.stringify(body) });
+
+const JogoApi = {
+  catalogo: (clienteId) => apiRequestUrl(`/api/jogos${clienteId ? `?clienteId=${clienteId}` : ""}`),
+  estoque: () => apiRequestUrl("/api/jogos/estoque"),
+  cadastrar: (payload) => apiRequestUrl("/api/jogos", json("POST", payload)),
+  ajustarEstoque: (id, estoque) => apiRequestUrl(`/api/jogos/${id}/estoque`, json("PATCH", { estoque })),
+};
+
+// RF0031 / RF0032 / RF0034
+const CarrinhoApi = {
+  obter: (clienteId) => apiRequest(`/${clienteId}/carrinho`),
+  adicionar: (clienteId, jogoId, quantidade) => apiRequest(`/${clienteId}/carrinho/itens`, json("POST", { jogoId, quantidade })),
+  alterarQuantidade: (clienteId, itemId, quantidade) => apiRequest(`/${clienteId}/carrinho/itens/${itemId}`, json("PUT", { quantidade })),
+  remover: (clienteId, itemId) => apiRequest(`/${clienteId}/carrinho/itens/${itemId}`, { method: "DELETE" }),
+  frete: (clienteId, estado) => apiRequest(`/${clienteId}/carrinho/frete`, json("POST", { estado })),
+};
+
+// RF0033 / RF0038 / RF0025 / RF0039 / RF0040
+const PedidoApi = {
+  finalizar: (clienteId, payload) => apiRequest(`/${clienteId}/pedidos`, json("POST", payload)),
+  doCliente: (clienteId) => apiRequest(`/${clienteId}/pedidos`),
+  listar: (status) => apiRequestUrl(`/api/pedidos${status ? `?status=${status}` : ""}`),
+  validarPagamento: (id) => apiRequestUrl(`/api/pedidos/${id}/validar-pagamento`, { method: "PATCH" }),
+  despachar: (id) => apiRequestUrl(`/api/pedidos/${id}/despachar`, { method: "PATCH" }),
+  confirmarEntrega: (id) => apiRequestUrl(`/api/pedidos/${id}/confirmar-entrega`, { method: "PATCH" }),
+};
+
+// RF0036 / RF0037
+const CupomApi = {
+  listar: () => apiRequestUrl("/api/cupons"),
+  cadastrar: (payload) => apiRequestUrl("/api/cupons", json("POST", payload)),
+  trocaDoCliente: (clienteId) => apiRequest(`/${clienteId}/cupons`),
+  validar: (clienteId, codigos) => apiRequest(`/${clienteId}/cupons/validar`, json("POST", codigos)),
+};
+
+// RN0044 — prazo de bloqueio do carrinho
+const ParametroApi = {
+  listar: () => apiRequestUrl("/api/parametros"),
+  alterar: (chave, valor) => apiRequestUrl(`/api/parametros/${chave}`, json("PUT", { valor })),
 };
 
 // RNF0012 — log de auditoria (fora do prefixo /api/clientes)

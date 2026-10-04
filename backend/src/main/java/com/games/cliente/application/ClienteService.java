@@ -84,10 +84,6 @@ public class ClienteService {
         auditoria.registrar("Cliente", cliente.getId(), "INSERT", cliente.getCodigoCliente(),
                 "Cadastro: nome=" + cliente.getNome() + ", cpf=" + cliente.getCpf());
 
-        // O endereço informado no cadastro também é replicado como o primeiro
-        // registro da lista de endereços (RF0026), do tipo AMBOS: assim ele
-        // aparece na tela de "Endereços do cliente" e já satisfaz de imediato
-        // as RN0021/RN0022 (ao menos um endereço de cobrança e um de entrega).
         Endereco enderecoResidencial = new Endereco(
                 cliente.getId(),
                 "Residencial",
@@ -140,15 +136,15 @@ public class ClienteService {
                 req.telefoneDdd(),
                 req.telefoneNumero(),
                 req.email(),
-                req.enderecoTipoResidencia(),  // NOVO CAMPO
-                req.enderecoTipoLogradouro(),  // NOVO CAMPO
+                req.enderecoTipoResidencia(),
+                req.enderecoTipoLogradouro(),
                 req.enderecoLogradouro(),
                 req.enderecoNumero(),
                 req.enderecoBairro(),
                 req.enderecoCep(),
                 req.enderecoCidade(),
                 req.enderecoEstado(),
-                req.pais()                     // NOVO CAMPO
+                req.pais()
         );
 
         cliente = repository.save(cliente);
@@ -216,6 +212,21 @@ public class ClienteService {
         cliente = repository.save(cliente);
         auditoria.registrar("Cliente", cliente.getId(), "UPDATE", cliente.getCodigoCliente(),
                 "Status alterado para ATIVO (reativação)");
+        return cliente;
+    }
+
+    /** RN0027 — ranking numérico calculado pelo módulo de vendas a partir do perfil de compra. */
+    @Transactional
+    public Cliente atualizarRanking(Long id, int novoRanking) {
+        Cliente cliente = buscarPorId(id);
+        if (cliente.getRanking() == novoRanking) {
+            return cliente;
+        }
+        int anterior = cliente.getRanking();
+        cliente.atualizarRanking(novoRanking);
+        cliente = repository.save(cliente);
+        auditoria.registrar("Cliente", cliente.getId(), "UPDATE", cliente.getCodigoCliente(),
+                "Ranking alterado de " + anterior + " para " + novoRanking + " (RN0027)");
         return cliente;
     }
 

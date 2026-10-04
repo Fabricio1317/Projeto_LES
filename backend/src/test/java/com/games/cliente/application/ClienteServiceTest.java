@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -51,7 +52,8 @@ class ClienteServiceTest {
                 "Casa", "Rua",
                 "Rua das Flores", "100", "Centro", "01310100", "São Paulo", "SP", "Brasil"
         );
-        when(repository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+        // lenient: os testes de validação falham antes de salvar e não usam este stub
+        lenient().when(repository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test

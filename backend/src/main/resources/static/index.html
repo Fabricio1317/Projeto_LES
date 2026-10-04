@@ -3,16 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nexus — Gestão de Clientes</title>
+<title>Nexus — Game Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Chakra+Petch:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <header class="topbar">
-  <h1>Nexus <span>·</span> Gestão de Clientes</h1>
+  <div class="marca">
+    <span class="marca-simbolo" aria-hidden="true"></span>
+    <div>
+      <h1>NEXUS</h1>
+      <p class="marca-sub">game store · painel</p>
+    </div>
+  </div>
   <nav>
     <button class="tab-btn active" data-tab="tab-cadastro" data-cy="nav-cadastro">Cadastrar</button>
     <button class="tab-btn" data-tab="tab-consulta" data-cy="nav-consulta">Consultar</button>
+    <button class="tab-btn" data-tab="tab-loja" data-cy="nav-loja">Loja</button>
+    <button class="tab-btn" data-tab="tab-vendas" data-cy="nav-vendas">Gestão de vendas</button>
     <button class="tab-btn" data-tab="tab-auditoria" data-cy="nav-auditoria">Auditoria</button>
   </nav>
 </header>
@@ -164,10 +175,257 @@
     </table>
   </section>
 
+  <!-- ===================== LOJA (RF0031–RF0038) ===================== -->
+  <section id="tab-loja" class="tab-content" hidden>
+    <h2>Loja</h2>
+    <div class="filtros">
+      <label>Cliente comprando
+        <select id="loja-cliente" data-cy="loja-cliente">
+          <option value="">Selecione o cliente</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="loja-conteudo" data-cy="loja-conteudo" hidden>
+      <h3>Catálogo</h3>
+      <table class="tabela-clientes" data-cy="tabela-catalogo">
+        <thead>
+          <tr><th>Título</th><th>Plataforma</th><th>Gênero</th><th>Classificação</th><th>Preço</th><th>Disponível</th><th>Quantidade</th><th class="col-acoes">Ações</th></tr>
+        </thead>
+        <tbody id="tbody-catalogo" data-cy="tbody-catalogo"></tbody>
+      </table>
+
+      <!-- RF0031 / RF0032 -->
+      <h3>Carrinho</h3>
+      <div id="carrinho-avisos" class="mensagem aviso" data-cy="carrinho-avisos" hidden></div>
+      <div id="carrinho-alerta-expiracao" class="mensagem aviso" data-cy="carrinho-alerta-expiracao" hidden></div>
+      <table class="tabela-clientes" data-cy="tabela-carrinho">
+        <thead>
+          <tr><th>Jogo</th><th>Preço</th><th>Quantidade</th><th>Subtotal</th><th class="col-acoes">Ações</th></tr>
+        </thead>
+        <tbody id="tbody-carrinho" data-cy="tbody-carrinho"></tbody>
+      </table>
+      <p id="carrinho-vazio" class="hint" data-cy="carrinho-vazio">O carrinho está vazio.</p>
+
+      <!-- RNF0042 -->
+      <div id="carrinho-removidos" class="removidos" data-cy="carrinho-removidos" hidden>
+        <p data-cy="msg-itens-removidos">Os itens abaixo foram retirados do carrinho porque o prazo de bloqueio expirou. Adicione-os novamente (ou descarte-os) para poder comprar.</p>
+        <table class="tabela-clientes">
+          <thead><tr><th>Jogo</th><th>Quantidade</th><th class="col-acoes">Ações</th></tr></thead>
+          <tbody id="tbody-removidos" data-cy="tbody-removidos"></tbody>
+        </table>
+      </div>
+
+      <div class="totais">
+        <span>Subtotal: <strong data-cy="carrinho-subtotal">R$ 0,00</strong></span>
+        <button type="button" id="btn-comprar" class="btn-primary" data-cy="btn-comprar" disabled>Comprar</button>
+      </div>
+
+      <!-- RF0033 / RF0035 / RF0036 / RF0037 / RF0038 -->
+      <div id="checkout" class="checkout" data-cy="checkout" hidden>
+        <h3>Endereço de entrega</h3>
+        <label>Endereço
+          <select id="checkout-endereco" data-cy="checkout-endereco"></select>
+        </label>
+        <fieldset id="checkout-novo-endereco" data-cy="checkout-novo-endereco" hidden>
+          <legend>Novo endereço de entrega</legend>
+          <div class="grid">
+            <label>Apelido (frase curta)
+              <input type="text" name="apelido" data-cy="novo-end-apelido">
+            </label>
+            <label>Tipo de residência
+              <select name="tipoResidencia" data-cy="novo-end-tipo-residencia">
+                <option value="">Selecione</option>
+                <option value="Casa">Casa</option>
+                <option value="Apartamento">Apartamento</option>
+                <option value="Condominio">Condomínio</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </label>
+            <label>Tipo de logradouro
+              <select name="tipoLogradouro" data-cy="novo-end-tipo-logradouro">
+                <option value="">Selecione</option>
+                <option value="Rua">Rua</option>
+                <option value="Avenida">Avenida</option>
+                <option value="Travessa">Travessa</option>
+                <option value="Rodovia">Rodovia</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </label>
+            <label>Logradouro
+              <input type="text" name="logradouro" data-cy="novo-end-logradouro">
+            </label>
+            <label>Número
+              <input type="text" name="numero" data-cy="novo-end-numero">
+            </label>
+            <label>Bairro
+              <input type="text" name="bairro" data-cy="novo-end-bairro">
+            </label>
+            <label>CEP
+              <input type="text" name="cep" data-cy="novo-end-cep">
+            </label>
+            <label>Cidade
+              <input type="text" name="cidade" data-cy="novo-end-cidade">
+            </label>
+            <label>Estado (UF)
+              <input type="text" name="estado" maxlength="2" data-cy="novo-end-estado">
+            </label>
+            <label>País
+              <input type="text" name="pais" data-cy="novo-end-pais">
+            </label>
+            <label>Observações
+              <input type="text" name="observacoes" data-cy="novo-end-observacoes">
+            </label>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="novo-end-salvar" data-cy="novo-end-salvar">
+            Incorporar este endereço ao meu perfil
+          </label>
+        </fieldset>
+        <p class="resumo-valores">Frete: <strong data-cy="checkout-frete">—</strong> · Total da compra: <strong data-cy="checkout-total">—</strong></p>
+        <p class="hint" data-cy="criterio-frete">Critério do frete: valor base pela UF de entrega (SP: R$ 10,00; demais estados do Sul e Sudeste: R$ 15,00; demais estados: R$ 25,00) + R$ 5,00 por kg dos itens.</p>
+
+        <h3>Cupons</h3>
+        <div class="filtros">
+          <label>Código do cupom
+            <input type="text" id="checkout-cupom-codigo" data-cy="checkout-cupom-codigo">
+          </label>
+          <button type="button" id="btn-aplicar-cupom" class="btn-secondary" data-cy="btn-aplicar-cupom">Aplicar cupom</button>
+        </div>
+        <div id="cupons-troca-disponiveis" class="cupons-disponiveis" data-cy="cupons-troca-disponiveis"></div>
+        <ul id="lista-cupons" class="lista-cupons" data-cy="lista-cupons"></ul>
+        <p class="resumo-valores">Cupons: <strong data-cy="checkout-valor-cupons">R$ 0,00</strong> · A pagar com cartão: <strong data-cy="checkout-restante">R$ 0,00</strong></p>
+
+        <h3>Cartões de crédito</h3>
+        <table class="tabela-clientes" data-cy="tabela-pagto-cartoes">
+          <thead><tr><th>Usar</th><th>Cartão</th><th>Bandeira</th><th>Valor (R$)</th></tr></thead>
+          <tbody id="tbody-pagto-cartoes" data-cy="tbody-pagto-cartoes"></tbody>
+        </table>
+        <label class="checkbox-label">
+          <input type="checkbox" id="pagto-novo-check" data-cy="pagto-novo-check">
+          Pagar com um novo cartão
+        </label>
+        <fieldset id="pagto-novo-cartao" data-cy="pagto-novo-cartao" hidden>
+          <legend>Novo cartão</legend>
+          <div class="grid">
+            <label>Número
+              <input type="text" id="pagto-novo-numero" data-cy="pagto-novo-numero">
+            </label>
+            <label>Nome impresso
+              <input type="text" id="pagto-novo-nome" data-cy="pagto-novo-nome">
+            </label>
+            <label>Bandeira
+              <select id="pagto-novo-bandeira" data-cy="pagto-novo-bandeira">
+                <option value="">Selecione</option>
+                <option value="VISA">Visa</option>
+                <option value="MASTERCARD">Mastercard</option>
+                <option value="ELO">Elo</option>
+                <option value="AMERICAN_EXPRESS">American Express</option>
+                <option value="HIPERCARD">Hipercard</option>
+              </select>
+            </label>
+            <label>Código de segurança
+              <input type="text" id="pagto-novo-cvv" maxlength="4" data-cy="pagto-novo-cvv">
+            </label>
+            <label>Valor (R$)
+              <input type="text" id="pagto-novo-valor" data-cy="pagto-novo-valor">
+            </label>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="pagto-novo-salvar" data-cy="pagto-novo-salvar">
+            Incorporar este cartão ao meu perfil
+          </label>
+        </fieldset>
+        <div class="modal-actions">
+          <button type="button" id="btn-cancelar-checkout" class="btn-secondary" data-cy="btn-cancelar-checkout">Voltar ao carrinho</button>
+          <button type="button" id="btn-finalizar-compra" class="btn-primary" data-cy="btn-finalizar-compra">Finalizar compra</button>
+        </div>
+      </div>
+
+      <h3>Minhas compras</h3>
+      <table class="tabela-clientes" data-cy="tabela-minhas-compras">
+        <thead><tr><th>Código</th><th>Data</th><th>Total</th><th>Cupom de troca gerado</th><th>Status</th></tr></thead>
+        <tbody id="tbody-minhas-compras" data-cy="tbody-minhas-compras"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== GESTÃO DE VENDAS (RN0037–RN0040) ===================== -->
+  <section id="tab-vendas" class="tab-content" hidden>
+    <h2>Gestão de vendas</h2>
+
+    <h3>Compras</h3>
+    <form id="form-filtro-pedidos" class="filtros" data-cy="form-filtro-pedidos">
+      <label>Status
+        <select name="status" data-cy="filtro-status-pedido">
+          <option value="">Todos</option>
+          <option value="EM_PROCESSAMENTO">EM PROCESSAMENTO</option>
+          <option value="APROVADA">APROVADA</option>
+          <option value="REPROVADA">REPROVADA</option>
+          <option value="EM_TRANSPORTE">EM TRANSPORTE</option>
+          <option value="ENTREGUE">ENTREGUE</option>
+        </select>
+      </label>
+      <button type="submit" class="btn-secondary" data-cy="btn-filtrar-pedidos">Filtrar</button>
+    </form>
+    <table class="tabela-clientes" data-cy="tabela-pedidos">
+      <thead>
+        <tr><th>Código</th><th>Cliente</th><th>Data</th><th>Total</th><th>Pagamento</th><th>Status</th><th class="col-acoes">Ações</th></tr>
+      </thead>
+      <tbody id="tbody-pedidos" data-cy="tbody-pedidos"></tbody>
+    </table>
+
+    <h3>Estoque</h3>
+    <p class="hint">Estoque físico só diminui quando a compra é aprovada. "Disponível" desconta compras em processamento e itens bloqueados em carrinhos.</p>
+    <table class="tabela-clientes" data-cy="tabela-estoque">
+      <thead><tr><th>Título</th><th>Plataforma</th><th>Preço</th><th>Estoque</th><th>Disponível</th><th class="col-acoes">Ajustar estoque</th></tr></thead>
+      <tbody id="tbody-estoque" data-cy="tbody-estoque"></tbody>
+    </table>
+
+    <h3>Cupons</h3>
+    <form id="form-cupom" data-cy="form-cupom">
+      <div class="grid">
+        <label>Código
+          <input type="text" name="codigo" data-cy="cupom-codigo" required>
+        </label>
+        <label>Tipo
+          <select name="tipo" data-cy="cupom-tipo" required>
+            <option value="PROMOCIONAL">Promocional</option>
+            <option value="TROCA">Troca</option>
+          </select>
+        </label>
+        <label>Valor (R$)
+          <input type="text" name="valor" data-cy="cupom-valor" required>
+        </label>
+        <label>Cliente (id, para cupom de troca)
+          <input type="text" name="clienteId" data-cy="cupom-cliente">
+        </label>
+        <label>Validade
+          <input type="date" name="validade" data-cy="cupom-validade">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-primary" data-cy="btn-cadastrar-cupom">Cadastrar cupom</button>
+      </div>
+    </form>
+    <table class="tabela-clientes" data-cy="tabela-cupons">
+      <thead><tr><th>Código</th><th>Tipo</th><th>Valor</th><th>Cliente</th><th>Validade</th><th>Utilizado</th></tr></thead>
+      <tbody id="tbody-cupons" data-cy="tbody-cupons"></tbody>
+    </table>
+
+    <h3>Parâmetros</h3>
+    <form id="form-parametro" class="filtros" data-cy="form-parametro">
+      <label>Prazo de bloqueio do carrinho (segundos)
+        <input type="number" min="1" name="prazo" data-cy="param-prazo" required>
+      </label>
+      <button type="submit" class="btn-secondary" data-cy="btn-salvar-prazo">Salvar prazo</button>
+    </form>
+  </section>
+
   <!-- ===================== AUDITORIA (RNF0012) ===================== -->
   <section id="tab-auditoria" class="tab-content" hidden>
     <h2>Log de auditoria</h2>
-    <p class="hint">Toda inserção ou alteração de Cliente, Endereço ou Cartão gera um registro aqui, com data, hora, usuário responsável e o dado alterado.</p>
+    <p class="hint">Toda inserção ou alteração (clientes, endereços, cartões, carrinho, compras, cupons, estoque e parâmetros) gera um registro aqui, com data, hora, usuário responsável e o dado alterado.</p>
     <table class="tabela-clientes" data-cy="tabela-auditoria">
       <thead>
         <tr><th>Data/Hora</th><th>Entidade</th><th>Operação</th><th>Usuário</th><th>Dado alterado</th></tr>
@@ -384,6 +642,21 @@
     </div>
   </div>
 
+  <!-- ===================== TRANSAÇÕES (RF0025) - modal ===================== -->
+  <div id="modal-transacoes" class="modal" hidden data-cy="modal-transacoes">
+    <div class="modal-box">
+      <h2>Transações do cliente</h2>
+      <table class="tabela-clientes" data-cy="tabela-transacoes">
+        <thead><tr><th>Código</th><th>Data</th><th>Itens</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody id="tbody-transacoes" data-cy="tbody-transacoes"></tbody>
+      </table>
+      <p id="transacoes-vazio" class="hint" data-cy="transacoes-vazio" hidden>Este cliente ainda não realizou nenhuma compra.</p>
+      <div class="modal-actions">
+        <button type="button" id="btn-fechar-transacoes" class="btn-secondary" data-cy="btn-fechar-transacoes">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== SENHA (RF0028) - modal ===================== -->
   <div id="modal-senha" class="modal" hidden data-cy="modal-senha">
     <div class="modal-box">
@@ -414,5 +687,7 @@
 
 <script src="js/api-client.js"></script>
 <script src="js/cliente.js"></script>
+<script src="js/loja.js"></script>
+<script src="js/gestao-vendas.js"></script>
 </body>
 </html>

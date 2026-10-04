@@ -1,9 +1,14 @@
-# Nexus — CRUD de Cliente (backend + frontend + testes automatizados)
+# Nexus — Clientes e Vendas (backend + frontend + testes automatizados)
 
-Módulo completo de gestão de clientes do Nexus: cadastrar, consultar,
-alterar e inativar clientes, mais a gestão de endereços (RF0026), cartões
-de crédito (RF0027) e troca de senha (RF0028) — com testes automatizados
-de interface (Cypress) cobrindo os RF/RN/RNF do DRS.
+Dois módulos do Nexus, com testes automatizados de interface (Cypress)
+cobrindo os RF/RN/RNF do DRS:
+
+- **Gestão de clientes** — cadastrar, consultar, alterar e inativar
+  clientes, mais endereços (RF0026), cartões de crédito (RF0027), troca de
+  senha (RF0028) e consulta de transações (RF0025).
+- **Fluxo de vendas** — carrinho (RF0031/RF0032), compra e finalização
+  (RF0033–RF0038), validação do pagamento (RN0037/RN0038), despacho
+  (RF0039) e entrega (RF0040).
 
 ## Estrutura
 
@@ -11,19 +16,31 @@ de interface (Cypress) cobrindo os RF/RN/RNF do DRS.
 nexus-crud/
 ├── backend/                     # Spring Boot (Java 21)
 │   ├── pom.xml
-│   └── src/main/java/com/games/cliente/
-│       ├── domain/
-│       │   ├── entity/           # Cliente, Endereco, Cartao, LogTransacao (entidades JPA)
-│       │   └── enums/            # GeneroCliente, StatusCliente, TipoEndereco, Bandeira
-│       ├── application/         # ClienteService, EnderecoService, CartaoService, AuditoriaService + validation/ + exception/
-│       └── adapter/
-│           ├── in/web/          # ClienteController, EnderecoController, CartaoController, AuditoriaController, GlobalExceptionHandler, dto/
-│           └── out/persistence/ # ClienteRepository, EnderecoRepository, CartaoRepository, LogTransacaoRepository (Spring Data JPA)
-│       resources/                # application.properties
+│   └── src/main/java/com/games/
+│       ├── cliente/
+│       │   ├── domain/
+│       │   │   ├── entity/       # Cliente, Endereco, Cartao, LogTransacao (entidades JPA)
+│       │   │   └── enums/        # GeneroCliente, StatusCliente, TipoEndereco, Bandeira
+│       │   ├── application/     # ClienteService, EnderecoService, CartaoService, AuditoriaService + validation/ + exception/
+│       │   └── adapter/
+│       │       ├── in/web/      # ClienteController, EnderecoController, CartaoController, AuditoriaController, GlobalExceptionHandler, dto/
+│       │       └── out/persistence/ # ClienteRepository, EnderecoRepository, CartaoRepository, LogTransacaoRepository
+│       └── vendas/
+│           ├── domain/
+│           │   ├── entity/       # Jogo, Carrinho, CarrinhoItem, Pedido, PedidoItem, PagamentoCartao, PedidoCupom, Cupom, EnderecoEntrega, ParametroSistema
+│           │   └── enums/        # StatusPedido, TipoCupom, SituacaoItemCarrinho
+│           ├── application/     # CarrinhoService, PedidoService, CupomService, JogoService, EstoqueService, FreteService, ParametroService, OperadoraCartaoSimulada
+│           ├── adapter/
+│           │   ├── in/web/      # CarrinhoController, PedidoController, CupomController, JogoController, ParametroController, dto/
+│           │   └── out/persistence/ # repositórios Spring Data JPA
+│           └── config/          # CargaInicialDominio (RNF0013)
+│       resources/                # application.properties, static/ (frontend)
 │       test/java/...            # testes unitários (JUnit + Mockito) do ClienteService
 ├── cypress/
-│   ├── e2e/cliente-crud.cy.js   # suíte de testes de interface (37 testes)
-│   └── support/cpf-generator.js # gera CPFs válidos únicos por execução
+│   ├── e2e/cliente-crud.cy.js          # suíte do módulo de clientes (37 testes)
+│   ├── e2e/pedido-caminho-feliz.cy.js  # criação de pedido — suíte da apresentação desta fase (23 testes)
+│   ├── e2e/vendas-pos-finalizacao.cy.js # regras de vendas fora do escopo desta fase (13 testes)
+│   └── support/                        # cpf-generator.js e vendas-helpers.js (pré-condições e ações comuns)
 ├── cypress.config.js
 └── package.json
 ```
@@ -37,6 +54,13 @@ cd backend
 mvn spring-boot:run
 ```
 
+Testes unitários (JUnit + Mockito), funcionam em JDK 21 ou mais novo:
+
+```bash
+cd backend
+mvn test
+```
+
 ### 2. Testes automatizados de interface (Cypress)
 
 Com o backend rodando em outro terminal (o frontend é servido pelo próprio Spring Boot):
@@ -45,10 +69,16 @@ Com o backend rodando em outro terminal (o frontend é servido pelo próprio Spr
 npm install
 npx cypress open     # modo interativo, bom para a apresentação ao vivo
 # ou
-npx cypress run      # modo headless, para rodar toda a suíte de uma vez
+npx cypress run      # modo headless, roda as duas suítes
+npx cypress run --spec cypress/e2e/pedido-caminho-feliz.cy.js   # só a criação de pedido (apresentação)
 ```
 
-## Tabela de rastreabilidade — RF/RN/RNF → Endpoint → Teste
+Na interface, a aba **Loja** é a visão do cliente (escolha o cliente
+comprando no topo, já que o módulo não tem login) e a aba **Gestão de
+vendas** é a visão do administrador (validar pagamento, despachar,
+confirmar entrega, estoque, cupons e parâmetros).
+
+## Rastreabilidade — Clientes (`cliente-crud.cy.js`)
 
 | RF/RN/RNF | Regra | Endpoint | Teste Cypress |
 |---|---|---|---|
@@ -85,6 +115,111 @@ npx cypress run      # modo headless, para rodar toda a suíte de uma vez
 | RF0027 | Promoção automática ao remover o preferencial | `DELETE /api/clientes/{id}/cartoes/{id}` | "ao remover o cartão preferencial, outro cartão restante deve assumir o posto" |
 | RNF0011 | Consultas respondidas em até 1s | `GET /api/clientes` | não medido em teste automatizado; ver índices em `nome`/`status` (Cliente) e `cliente_id` (Endereco/Cartao) em `@Table(indexes = ...)` |
 | RNF0012 | Log de auditoria (data, hora, usuário, dado alterado) em toda inserção/alteração | `GET /api/auditoria` | "deve registrar no log de auditoria o cadastro de um novo cliente" / "...a inativação de um cliente" |
+| RF0025 | Consulta das transações realizadas pelo cliente | `GET /api/clientes/{id}/pedidos` | *(suíte de vendas)* "a consulta de clientes exibe as transações realizadas pelo cliente" |
+| RN0027 | Ranking numérico pelo perfil de compra | `PATCH /api/pedidos/{id}/validar-pagamento` | *(suíte de vendas)* "o ranking do cliente é atualizado conforme o perfil de compra" |
+
+## Criação de pedido — caminho feliz (`pedido-caminho-feliz.cy.js`)
+
+Suíte apresentada nesta fase. Escopo: RF0031–RF0038, RN0023–RN0025,
+RN0031, RN0033–RN0036, RNF0011 e RNF0012.
+
+### Roteiro mínimo da apresentação → teste
+
+| Roteiro | Teste Cypress |
+|---|---|
+| 1. Mais de um item no carrinho e alteração da quantidade | "deve incluir mais de um jogo no carrinho, definindo a quantidade na adição e alterando-a na visualização" |
+| 2. Compra com endereço e cartão previamente cadastrados | "deve finalizar uma compra com endereço e cartão previamente cadastrados" |
+| 3. Novo endereço e novo cartão incorporados ao perfil | "deve finalizar com novo endereço e novo cartão cadastrados durante a compra e incorporá-los ao perfil" |
+| 4. Mais de um cartão respeitando o mínimo | "deve pagar com mais de um cartão de crédito, com no mínimo R$ 10,00 em cada" |
+| 5. Cartão e cupons, inclusive cartão abaixo de R$ 10,00 | "deve pagar com cartão de crédito e cupom promocional" / "deve combinar cupons de troca e promocional com cartão, aceitando menos de R$ 10,00 no cartão" |
+| 6. Cupons acima do valor, com emissão de cupom de troca | "deve emitir um cupom de troca com a diferença quando os cupons superam o valor da compra" |
+| 7. Pedido registrado EM PROCESSAMENTO | "o pedido finalizado é registrado com status EM PROCESSAMENTO e o carrinho é esvaziado" |
+
+### Rastreabilidade RF/RN/RNF → teste
+
+| RF/RN/RNF | Regra | Endpoint | Teste Cypress |
+|---|---|---|---|
+| RF0031 / RF0032 | Vários itens no carrinho; quantidade definida na adição e alterada na visualização | `POST` / `PUT /api/clientes/{id}/carrinho/itens` | "deve incluir mais de um jogo no carrinho…" |
+| RF0031 | Excluir item mantendo os demais | `DELETE /api/clientes/{id}/carrinho/itens/{itemId}` | "deve excluir um item do carrinho mantendo os demais" |
+| RN0031 | Não adicionar acima do disponível, não alterar para acima do disponível, não adicionar item indisponível | `POST` / `PUT /api/clientes/{id}/carrinho/itens` | os três testes "RN0031 — …" |
+| RF0033 / RF0035 / RF0036 / RF0038 | Compra iniciada no carrinho, com endereço e cartão já cadastrados | `POST /api/clientes/{id}/pedidos` | "deve finalizar uma compra com endereço e cartão previamente cadastrados" |
+| RF0035 / RF0036 | Novo endereço e novo cartão na compra, incorporados ao perfil | `POST /api/clientes/{id}/pedidos` | "deve finalizar com novo endereço e novo cartão…" |
+| RN0023 | Composição obrigatória do novo endereço | `POST /api/clientes/{id}/pedidos` | "não deve finalizar com um novo endereço sem os campos obrigatórios" |
+| RN0024 | Composição obrigatória do novo cartão | `POST /api/clientes/{id}/pedidos` | "não deve finalizar com um novo cartão sem nome impresso e código de segurança" |
+| RN0025 | Novo cartão só com bandeira registrada | `POST /api/clientes/{id}/pedidos` | "o novo cartão só aceita bandeiras registradas no sistema" |
+| RF0034 | Frete pelos itens (peso) e pelo endereço (UF) | `POST /api/clientes/{id}/carrinho/frete` | os dois testes "RF0034 — …" |
+| RN0034 | Mais de um cartão, mínimo de R$ 10,00 por cartão | `POST /api/clientes/{id}/pedidos` | "deve pagar com mais de um cartão…" / "não deve aceitar um cartão com valor abaixo de R$ 10,00…" |
+| RF0036 | Valores dos cartões fecham o valor a pagar | `POST /api/clientes/{id}/pedidos` | "não deve finalizar quando a soma dos cartões difere do valor a pagar" |
+| RF0037 | Cartão + cupom promocional | `POST /api/clientes/{id}/pedidos` | "deve pagar com cartão de crédito e cupom promocional" |
+| RF0037 / RN0035 | Cupons de troca e promocional + cartão abaixo de R$ 10,00 (valor máximo dos cupons primeiro) | `POST /api/clientes/{id}/pedidos` | "deve combinar cupons de troca e promocional com cartão…" |
+| RN0033 | Apenas um cupom promocional por compra | `POST /api/clientes/{id}/cupons/validar` | "não deve permitir mais de um cupom promocional na mesma compra" |
+| RN0036 | Emissão de cupom de troca com a diferença, na finalização | `POST /api/clientes/{id}/pedidos` | "deve emitir um cupom de troca com a diferença…" |
+| RN0036 | Cupons desnecessários recusados | `POST /api/clientes/{id}/pedidos` | "não deve permitir o uso de cupons desnecessários" |
+| RF0038 | Pedido registrado EM PROCESSAMENTO, carrinho esvaziado | `POST /api/clientes/{id}/pedidos` | "o pedido finalizado é registrado com status EM PROCESSAMENTO…" |
+| RNF0011 | Consultas do fluxo respondem em até 1 segundo | catálogo, carrinho, endereços, cartões, cupons, frete, clientes, pedidos | "as consultas usadas na criação do pedido respondem em no máximo 1 segundo" |
+| RNF0012 | Escritas do fluxo (carrinho, endereço, cartão, pedido) no log | `GET /api/auditoria` | "as operações de escrita da compra são registradas no log de auditoria" |
+
+## Implementado, fora do escopo desta fase (`vendas-pos-finalizacao.cy.js`)
+
+Regras do DRS já implementadas e testadas, mas que o enunciado da fase de
+criação de pedido pede para **não** apresentar.
+
+| RF/RN/RNF | Regra | Teste Cypress |
+|---|---|---|
+| RN0037 / RN0038 | Validação do pagamento: APROVADA ou REPROVADA (cartão recusado libera os itens e cancela o cupom de troca emitido) | "compra EM PROCESSAMENTO passa a APROVADA…" / "compra com cartão recusado pela operadora fica REPROVADA…" |
+| RN0037 | Validade e veracidade dos cupons | "não deve aceitar cupom vencido nem cupom inexistente" |
+| RF0039 / RN0039 | Somente compras aprovadas são despachadas (EM TRANSPORTE) | "somente compras aprovadas podem ser despachadas" |
+| RF0040 / RN0040 | Confirmação de entrega (ENTREGUE) | "somente compras em transporte têm a entrega confirmada" |
+| RN0028 / RF0053 | Baixa no estoque só na aprovação | "a baixa no estoque só acontece quando a compra é aprovada" |
+| RN0044 | Itens bloqueados para outros clientes; aviso 5 minutos antes de expirar | "itens no carrinho de um cliente ficam bloqueados…" / "deve notificar o cliente quando faltarem 5 minutos…" |
+| RN0044 / RN0045 / RNF0042 | Expiração do bloqueio, itens exibidos como removidos e compra desabilitada | "ao expirar o prazo, os itens são liberados…" |
+| RN0032 | Estoque alterado entre o carrinho e a compra | os dois testes "RN0032 — …" |
+| RF0025 / RN0027 | Transações e ranking do cliente | "a consulta de clientes exibe as transações…" / "o ranking do cliente é atualizado…" |
+| RNF0013 | Carga de domínio na implantação (parâmetros, jogos, cupons promocionais) | `CargaInicialDominio` roda a cada subida e só insere o que falta |
+
+## Produto: jogo no lugar de livro
+
+O DRS descreve um e-commerce de livros; o Nexus é um e-commerce de jogos.
+As regras de venda se aplicam sem mudança, trocando apenas o produto:
+
+| DRS (livro) | Nexus (jogo) |
+|---|---|
+| Livro | `Jogo` (edição física, com peso para o frete) |
+| Categoria | Gênero (Ação, RPG, Esporte…) |
+| Autor / Editora | Desenvolvedora / Distribuidora |
+| ISBN / Código de barras | Código de barras |
+| — | Plataforma (PlayStation 5, Xbox Series X\|S, Nintendo Switch, PC) e classificação indicativa (L, 10, 12, 14, 16, 18) |
+
+## Regras simuladas no fluxo de vendas
+
+O DRS não define alguns valores concretos; as convenções abaixo estão
+centralizadas no código e documentadas aqui para a apresentação:
+
+- **Frete (RF0034)** — base por UF de entrega (SP: R$ 10,00; demais estados
+  do Sul e Sudeste: R$ 15,00; demais: R$ 25,00) + R$ 5,00 por kg dos itens
+  (`FreteService`). O critério também aparece na tela da compra.
+- **Pagamento (RN0034–RN0036)** — os cupons são aplicados primeiro, pelo
+  valor máximo; o restante vai para os cartões, cuja soma deve fechar o valor
+  a pagar. Um cartão abaixo de R$ 10,00 só é aceito quando é o único cartão
+  e completa um pagamento feito com cupons. Se os cupons superarem a compra,
+  o cupom de troca com a diferença é emitido na finalização (desde que
+  nenhum cupom seja desnecessário).
+- **Cupons de troca para a demonstração** — como a geração por troca está
+  fora do escopo, eles são carregados previamente pela Gestão de vendas
+  (cadastro de cupom do tipo Troca) ou por `POST /api/cupons`.
+- **Operadora de cartão (RN0037)** — simulada: recusa cartões cujo número
+  termina em `0000` e aprova os demais (`OperadoraCartaoSimulada`). A
+  validação é disparada pelo administrador em "Validar pagamento".
+- **Bloqueio do carrinho (RN0044)** — o prazo é o parâmetro
+  `PRAZO_BLOQUEIO_CARRINHO_SEGUNDOS` (padrão 1800 s), editável na Gestão de
+  vendas. Conta a partir do último item incluído; o aviso aparece quando
+  faltam 5 minutos ou menos.
+- **Disponível para venda** — estoque físico − itens de compras EM
+  PROCESSAMENTO − itens bloqueados nos carrinhos de outros clientes.
+- **Ranking (RN0027)** — 1 ponto a cada R$ 100,00 em compras efetivadas
+  (APROVADA, EM TRANSPORTE ou ENTREGUE).
+- **Cupons promocionais iniciais (RNF0013)** — `PROMO10`, `PROMO20`,
+  `GAMER5` e `VENCIDO10` (vencido, para demonstrar a RN0037).
 
 ## Sobre o telefone (RN0026)
 
@@ -114,18 +249,22 @@ sem cobrança ou sem entrega.
 
 ## Sobre o log de auditoria (RNF0012)
 
-Como este módulo isolado de Cliente não implementa autenticação (não há
-login de administrador separado), o campo "usuário responsável" é
-preenchido com o código do próprio cliente afetado — já que toda ação
-aqui é o cliente gerenciando seus próprios dados. Em um sistema com login
-real, este valor viria do usuário autenticado na sessão. A auditoria
-cobre inserções e alterações (INSERT/UPDATE), conforme o texto literal
-do requisito; remoções de endereço/cartão não geram log, pois RNF0012
-menciona apenas inserção e alteração.
+Como o sistema não implementa autenticação, o campo "usuário responsável"
+é preenchido com o código do cliente nas ações feitas por ele (cadastro,
+carrinho, compra) e com `admin` nas ações da Gestão de vendas (validar
+pagamento, despachar, entregar, estoque, cupons, parâmetros). Em um
+sistema com login real, este valor viria do usuário autenticado na
+sessão. A auditoria cobre inserções e alterações (INSERT/UPDATE),
+conforme o texto literal do requisito; remoções não geram log.
 
-## Fora do escopo deste módulo (pertencem a Pedido/Compra)
+## Fora do escopo desta entrega
 
-- **RF0025** — consulta de histórico de transações do cliente
-- **RN0027** — cálculo real do ranking numérico por perfil de compra
-  (o campo existe e inicia em 0, mas seu cálculo depende de dados de
-  pedidos que não existem neste recorte isolado de Cliente)
+- **Fluxo de troca** — RF0041–RF0045, RN0041–RN0043 e RN0046 (os cupons
+  de troca já são aceitos no pagamento; a geração a partir de uma troca
+  pertence a esse fluxo).
+- **Cadastro de jogos** — RF0011–RF0016 e RN0011–RN0017 (no DRS, "livros"). Existe apenas
+  um cadastro simplificado (`POST /api/jogos`) para alimentar a loja.
+- **Controle de estoque** — RF0051/RF0052/RF0054 e RN0050–RN0062. Existe
+  apenas o ajuste manual de estoque na Gestão de vendas; a baixa por venda
+  (RF0053) está implementada.
+- **Análise e recomendação** — RF0055–RF0058, RN0071–RN0074 e RNF0043–RNF0046.
