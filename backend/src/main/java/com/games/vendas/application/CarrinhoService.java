@@ -34,7 +34,7 @@ import java.util.Map;
  *          até serem adicionados novamente ou descartados.
  */
 @Service
-public class CarrinhoService {
+public class    CarrinhoService {
 
     public static final long SEGUNDOS_ALERTA_EXPIRACAO = 300;
 

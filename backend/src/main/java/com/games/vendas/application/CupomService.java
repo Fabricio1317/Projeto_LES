@@ -4,7 +4,7 @@ import com.games.cliente.adapter.out.persistence.ClienteRepository;
 import com.games.cliente.application.AuditoriaService;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;
-import com.games.vendas.adapter.in.web.dto.CupomRequest;
+import com.games.vendas.adapter.in.web.dto.request.CupomRequest;
 import com.games.vendas.adapter.out.persistence.CupomRepository;
 import com.games.vendas.domain.entity.Cupom;
 import com.games.vendas.domain.enums.TipoCupom;

@@ -176,12 +176,12 @@ describe("Vendas — etapas posteriores à finalização e bloqueio do carrinho"
     it("RN0044 / RN0045 / RNF0042 — ao expirar o prazo, os itens são liberados, exibidos como removidos e a compra fica desabilitada", () => {
       criarCliente().then((cliente) => {
         criarJogo({ estoque: 5 }).then((jogo) => {
-          definirPrazoCarrinho(3);
+          definirPrazoCarrinho(8);
           abrirLoja(cliente.id);
           adicionarAoCarrinho(jogo.titulo, 2);
           linhaCarrinho(jogo.titulo).should("exist");
 
-          cy.get("[data-cy=carrinho-removidos]", { timeout: 10000 }).should("be.visible");
+          cy.get("[data-cy=carrinho-removidos]", { timeout: 20000 }).should("be.visible");
           cy.contains("[data-cy=linha-removido]", jogo.titulo).should("exist");
           cy.get("[data-cy=msg-itens-removidos]").should("be.visible").and("contain.text", "prazo de bloqueio de");
           cy.get("[data-cy=aviso-carrinho]").should("contain.text", "RN0044");

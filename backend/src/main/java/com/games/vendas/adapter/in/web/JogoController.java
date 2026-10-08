@@ -1,8 +1,8 @@
 package com.games.vendas.adapter.in.web;
 
-import com.games.vendas.adapter.in.web.dto.AjusteEstoqueRequest;
-import com.games.vendas.adapter.in.web.dto.JogoRequest;
-import com.games.vendas.adapter.in.web.dto.JogoResponse;
+import com.games.vendas.adapter.in.web.dto.request.AjusteEstoqueRequest;
+import com.games.vendas.adapter.in.web.dto.request.JogoRequest;
+import com.games.vendas.adapter.in.web.dto.response.JogoResponse;
 import com.games.vendas.application.EstoqueService;
 import com.games.vendas.application.JogoService;
 import com.games.vendas.application.JogoService.JogoComDisponibilidade;

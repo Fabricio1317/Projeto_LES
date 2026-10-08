@@ -1,6 +1,6 @@
 package com.games.cliente.application;
 
-import com.games.cliente.adapter.in.web.dto.EnderecoRequest;
+import com.games.cliente.adapter.in.web.dto.request.EnderecoRequest;
 import com.games.cliente.adapter.out.persistence.ClienteRepository;
 import com.games.cliente.adapter.out.persistence.EnderecoRepository;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;

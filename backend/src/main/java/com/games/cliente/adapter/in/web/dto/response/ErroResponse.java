@@ -1,4 +1,4 @@
-package com.games.cliente.adapter.in.web.dto;
+package com.games.cliente.adapter.in.web.dto.response;
 
 import java.time.LocalDateTime;
 import java.util.List;

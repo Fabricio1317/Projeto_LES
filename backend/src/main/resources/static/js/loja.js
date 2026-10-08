@@ -61,11 +61,13 @@ async function carregarLoja() {
 
 // --------------------- catálogo ---------------------
 async function carregarCatalogo() {
+  const tbody = el("tbody-catalogo");
+  // data-pronto indica que a tabela terminou de ser redesenhada (usado pelos testes automatizados)
+  tbody.dataset.pronto = "false";
   try {
     const jogos = await JogoApi.catalogo(loja.clienteId);
     const noCarrinho = {};
     (loja.carrinho ? loja.carrinho.itens : []).forEach((i) => { noCarrinho[i.jogoId] = i.quantidade; });
-    const tbody = el("tbody-catalogo");
     tbody.innerHTML = "";
     jogos.forEach((j) => {
       const disponivel = Math.max(0, j.disponivel - (noCarrinho[j.id] || 0));
@@ -85,6 +87,8 @@ async function carregarCatalogo() {
     });
   } catch (erro) {
     mostrarMensagem(mensagemDeErro(erro), "erro");
+  } finally {
+    tbody.dataset.pronto = "true";
   }
 }
 

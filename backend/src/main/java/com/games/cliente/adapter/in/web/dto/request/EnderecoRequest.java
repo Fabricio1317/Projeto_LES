@@ -1,20 +1,22 @@
-package com.games.vendas.adapter.in.web.dto;
+package com.games.cliente.adapter.in.web.dto.request;
 
+import com.games.cliente.domain.enums.TipoEndereco;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/**
- * RF0035 — novo endereço de entrega informado na compra. Segue a composição
- * da RN0023 e o apelido (frase curta de identificação) do RF0026.
- */
-public record NovoEnderecoEntregaRequest(
+/** RF0026 / RN0023 — todos os campos obrigatórios, exceto observações. */
+public record EnderecoRequest(
         @NotBlank(message = "Apelido do endereço é obrigatório")
         String apelido,
 
-        @NotBlank(message = "Tipo de residência é obrigatório")
+        @NotNull(message = "Tipo do endereço é obrigatório (COBRANCA, ENTREGA ou AMBOS)")
+        TipoEndereco tipo,
+
+        @NotBlank(message = "Tipo de residência é obrigatório (ex: Casa, Apartamento)")
         String tipoResidencia,
 
-        @NotBlank(message = "Tipo de logradouro é obrigatório")
+        @NotBlank(message = "Tipo de logradouro é obrigatório (ex: Rua, Avenida)")
         String tipoLogradouro,
 
         @NotBlank(message = "Logradouro é obrigatório")

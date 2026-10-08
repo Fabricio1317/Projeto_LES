@@ -23,7 +23,7 @@ nexus-crud/
 │       │   │   └── enums/        # GeneroCliente, StatusCliente, TipoEndereco, Bandeira
 │       │   ├── application/     # ClienteService, EnderecoService, CartaoService, AuditoriaService + validation/ + exception/
 │       │   └── adapter/
-│       │       ├── in/web/      # ClienteController, EnderecoController, CartaoController, AuditoriaController, GlobalExceptionHandler, dto/
+│       │       ├── in/web/      # ClienteController, EnderecoController, CartaoController, AuditoriaController, GlobalExceptionHandler, dto/request/ e dto/response/
 │       │       └── out/persistence/ # ClienteRepository, EnderecoRepository, CartaoRepository, LogTransacaoRepository
 │       └── vendas/
 │           ├── domain/
@@ -31,7 +31,7 @@ nexus-crud/
 │           │   └── enums/        # StatusPedido, TipoCupom, SituacaoItemCarrinho
 │           ├── application/     # CarrinhoService, PedidoService, CupomService, JogoService, EstoqueService, FreteService, ParametroService, OperadoraCartaoSimulada
 │           ├── adapter/
-│           │   ├── in/web/      # CarrinhoController, PedidoController, CupomController, JogoController, ParametroController, dto/
+│           │   ├── in/web/      # CarrinhoController, PedidoController, CupomController, JogoController, ParametroController, dto/request/ e dto/response/
 │           │   └── out/persistence/ # repositórios Spring Data JPA
 │           └── config/          # CargaInicialDominio (RNF0013)
 │       resources/                # application.properties, static/ (frontend)
@@ -72,6 +72,17 @@ npx cypress open     # modo interativo, bom para a apresentação ao vivo
 npx cypress run      # modo headless, roda as duas suítes
 npx cypress run --spec cypress/e2e/pedido-caminho-feliz.cy.js   # só a criação de pedido (apresentação)
 ```
+
+**Velocidade dos testes.** Para a apresentação, os testes rodam com uma pausa
+de 200 ms após cada clique, seleção, marcação ou digitação, e digitam mais
+devagar (`cypress/support/e2e.js`). Para mudar:
+
+```bash
+npx cypress open --env lentidao=1000   # ainda mais lento
+npx cypress run --env lentidao=0       # sem pausas (rápido, para conferir tudo de uma vez)
+```
+
+O valor padrão fica em `cypress.config.js` (`env.lentidao`).
 
 Na interface, a aba **Loja** é a visão do cliente (escolha o cliente
 comprando no topo, já que o módulo não tem login) e a aba **Gestão de

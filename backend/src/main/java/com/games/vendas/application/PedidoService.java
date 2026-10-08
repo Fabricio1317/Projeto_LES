@@ -1,6 +1,6 @@
 package com.games.vendas.application;
 
-import com.games.cliente.adapter.in.web.dto.EnderecoRequest;
+import com.games.cliente.adapter.in.web.dto.request.EnderecoRequest;
 import com.games.cliente.adapter.out.persistence.CartaoRepository;
 import com.games.cliente.adapter.out.persistence.EnderecoRepository;
 import com.games.cliente.application.AuditoriaService;
@@ -12,9 +12,9 @@ import com.games.cliente.application.exception.RegraNegocioException;
 import com.games.cliente.domain.entity.Cartao;
 import com.games.cliente.domain.entity.Endereco;
 import com.games.cliente.domain.enums.TipoEndereco;
-import com.games.vendas.adapter.in.web.dto.FinalizarCompraRequest;
-import com.games.vendas.adapter.in.web.dto.NovoEnderecoEntregaRequest;
-import com.games.vendas.adapter.in.web.dto.PagamentoCartaoRequest;
+import com.games.vendas.adapter.in.web.dto.request.FinalizarCompraRequest;
+import com.games.vendas.adapter.in.web.dto.request.NovoEnderecoEntregaRequest;
+import com.games.vendas.adapter.in.web.dto.request.PagamentoCartaoRequest;
 import com.games.vendas.adapter.out.persistence.CarrinhoRepository;
 import com.games.vendas.adapter.out.persistence.PedidoRepository;
 import com.games.vendas.domain.entity.*;

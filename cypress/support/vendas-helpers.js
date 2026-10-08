@@ -62,6 +62,7 @@ function abrirLoja(clienteId) {
   cy.get(`[data-cy=loja-cliente] option[value="${clienteId}"]`).should("exist");
   cy.get("[data-cy=loja-cliente]").select(String(clienteId));
   cy.get("[data-cy=loja-conteudo]").should("be.visible");
+  catalogoPronto();
 }
 
 function linhaJogo(titulo) {
@@ -74,10 +75,17 @@ function linhaJogo(titulo) {
  * interaja com uma linha que está sendo substituída.
  */
 function adicionarAoCarrinho(titulo, quantidade) {
+  catalogoPronto();
   linhaJogo(titulo).find("[data-cy=qtd-jogo]").clear().type(String(quantidade));
   cy.intercept("GET", "/api/jogos*").as("catalogo");
   linhaJogo(titulo).find("[data-cy=btn-adicionar-carrinho]").click();
   cy.wait("@catalogo");
+  catalogoPronto();
+}
+
+/** Espera o catálogo terminar de ser redesenhado (a tabela marca data-pronto="true"). */
+function catalogoPronto() {
+  cy.get("[data-cy=tbody-catalogo]").should("have.attr", "data-pronto", "true");
 }
 
 function linhaCarrinho(titulo) {

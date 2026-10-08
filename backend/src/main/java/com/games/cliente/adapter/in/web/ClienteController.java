@@ -1,6 +1,7 @@
 package com.games.cliente.adapter.in.web;
 
-import com.games.cliente.adapter.in.web.dto.*;
+import com.games.cliente.adapter.in.web.dto.request.*;
+import com.games.cliente.adapter.in.web.dto.response.*;
 import com.games.cliente.application.ClienteService;
 import com.games.cliente.domain.entity.Cliente;
 import com.games.cliente.domain.enums.StatusCliente;

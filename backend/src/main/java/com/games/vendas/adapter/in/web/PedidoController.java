@@ -1,7 +1,7 @@
 package com.games.vendas.adapter.in.web;
 
-import com.games.vendas.adapter.in.web.dto.FinalizarCompraRequest;
-import com.games.vendas.adapter.in.web.dto.PedidoResponse;
+import com.games.vendas.adapter.in.web.dto.request.FinalizarCompraRequest;
+import com.games.vendas.adapter.in.web.dto.response.PedidoResponse;
 import com.games.vendas.application.PedidoService;
 import com.games.vendas.domain.enums.StatusPedido;
 import jakarta.validation.Valid;

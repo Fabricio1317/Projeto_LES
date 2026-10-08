@@ -1,6 +1,6 @@
 package com.games.cliente.application;
 
-import com.games.cliente.adapter.in.web.dto.CartaoRequest;
+import com.games.cliente.adapter.in.web.dto.request.CartaoRequest;
 import com.games.cliente.adapter.out.persistence.CartaoRepository;
 import com.games.cliente.adapter.out.persistence.ClienteRepository;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;

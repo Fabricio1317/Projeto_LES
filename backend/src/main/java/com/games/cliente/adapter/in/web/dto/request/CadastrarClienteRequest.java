@@ -1,4 +1,4 @@
-package com.games.cliente.adapter.in.web.dto;
+package com.games.cliente.adapter.in.web.dto.request;
 
 import com.games.cliente.domain.enums.GeneroCliente;
 import jakarta.validation.constraints.*;

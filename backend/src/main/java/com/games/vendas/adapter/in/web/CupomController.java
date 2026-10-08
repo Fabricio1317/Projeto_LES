@@ -1,7 +1,7 @@
 package com.games.vendas.adapter.in.web;
 
-import com.games.vendas.adapter.in.web.dto.CupomRequest;
-import com.games.vendas.adapter.in.web.dto.CupomResponse;
+import com.games.vendas.adapter.in.web.dto.request.CupomRequest;
+import com.games.vendas.adapter.in.web.dto.response.CupomResponse;
 import com.games.vendas.application.CupomService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

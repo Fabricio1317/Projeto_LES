@@ -1,7 +1,7 @@
 package com.games.cliente.adapter.in.web;
 
-import com.games.cliente.adapter.in.web.dto.EnderecoRequest;
-import com.games.cliente.adapter.in.web.dto.EnderecoResponse;
+import com.games.cliente.adapter.in.web.dto.request.EnderecoRequest;
+import com.games.cliente.adapter.in.web.dto.response.EnderecoResponse;
 import com.games.cliente.application.EnderecoService;
 import com.games.cliente.domain.entity.Endereco;
 import jakarta.validation.Valid;

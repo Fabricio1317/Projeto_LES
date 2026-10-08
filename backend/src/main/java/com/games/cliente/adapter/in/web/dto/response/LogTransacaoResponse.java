@@ -1,4 +1,4 @@
-package com.games.cliente.adapter.in.web.dto;
+package com.games.cliente.adapter.in.web.dto.response;
 
 import com.games.cliente.domain.entity.LogTransacao;
 import java.time.LocalDateTime;

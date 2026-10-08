@@ -1,7 +1,7 @@
 package com.games.cliente.adapter.in.web;
 
-import com.games.cliente.adapter.in.web.dto.CartaoRequest;
-import com.games.cliente.adapter.in.web.dto.CartaoResponse;
+import com.games.cliente.adapter.in.web.dto.request.CartaoRequest;
+import com.games.cliente.adapter.in.web.dto.response.CartaoResponse;
 import com.games.cliente.application.CartaoService;
 import com.games.cliente.domain.entity.Cartao;
 import jakarta.validation.Valid;

@@ -1,6 +1,6 @@
 package com.games.cliente.adapter.in.web;
 
-import com.games.cliente.adapter.in.web.dto.LogTransacaoResponse;
+import com.games.cliente.adapter.in.web.dto.response.LogTransacaoResponse;
 import com.games.cliente.application.AuditoriaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

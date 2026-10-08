@@ -1,4 +1,4 @@
-package com.games.vendas.adapter.in.web.dto;
+package com.games.vendas.adapter.in.web.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

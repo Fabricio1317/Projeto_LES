@@ -1,4 +1,4 @@
-package com.games.vendas.adapter.in.web.dto;
+package com.games.vendas.adapter.in.web.dto.response;
 
 import java.math.BigDecimal;
 

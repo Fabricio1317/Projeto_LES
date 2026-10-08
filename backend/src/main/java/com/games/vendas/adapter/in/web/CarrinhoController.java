@@ -1,10 +1,10 @@
 package com.games.vendas.adapter.in.web;
 
-import com.games.vendas.adapter.in.web.dto.CarrinhoResponse;
-import com.games.vendas.adapter.in.web.dto.FreteRequest;
-import com.games.vendas.adapter.in.web.dto.FreteResponse;
-import com.games.vendas.adapter.in.web.dto.ItemCarrinhoRequest;
-import com.games.vendas.adapter.in.web.dto.QuantidadeRequest;
+import com.games.vendas.adapter.in.web.dto.response.CarrinhoResponse;
+import com.games.vendas.adapter.in.web.dto.request.FreteRequest;
+import com.games.vendas.adapter.in.web.dto.response.FreteResponse;
+import com.games.vendas.adapter.in.web.dto.request.ItemCarrinhoRequest;
+import com.games.vendas.adapter.in.web.dto.request.QuantidadeRequest;
 import com.games.vendas.application.CarrinhoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

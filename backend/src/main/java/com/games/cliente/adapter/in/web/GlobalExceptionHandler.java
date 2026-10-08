@@ -1,6 +1,6 @@
 package com.games.cliente.adapter.in.web;
 
-import com.games.cliente.adapter.in.web.dto.ErroResponse;
+import com.games.cliente.adapter.in.web.dto.response.ErroResponse;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
 import com.games.cliente.application.exception.RecursoNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;

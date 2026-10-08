@@ -2,7 +2,7 @@ package com.games.vendas.application;
 
 import com.games.cliente.application.AuditoriaService;
 import com.games.cliente.application.exception.RecursoNaoEncontradoException;
-import com.games.vendas.adapter.in.web.dto.JogoRequest;
+import com.games.vendas.adapter.in.web.dto.request.JogoRequest;
 import com.games.vendas.adapter.out.persistence.JogoRepository;
 import com.games.vendas.domain.entity.Jogo;
 import org.springframework.stereotype.Service;

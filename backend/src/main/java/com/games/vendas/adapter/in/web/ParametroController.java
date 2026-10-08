@@ -1,7 +1,7 @@
 package com.games.vendas.adapter.in.web;
 
-import com.games.vendas.adapter.in.web.dto.ParametroRequest;
-import com.games.vendas.adapter.in.web.dto.ParametroResponse;
+import com.games.vendas.adapter.in.web.dto.request.ParametroRequest;
+import com.games.vendas.adapter.in.web.dto.response.ParametroResponse;
 import com.games.vendas.application.ParametroService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

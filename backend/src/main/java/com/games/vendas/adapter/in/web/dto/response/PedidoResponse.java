@@ -1,4 +1,4 @@
-package com.games.vendas.adapter.in.web.dto;
+package com.games.vendas.adapter.in.web.dto.response;
 
 import com.games.vendas.domain.entity.Pedido;
 import com.games.vendas.domain.enums.StatusPedido;

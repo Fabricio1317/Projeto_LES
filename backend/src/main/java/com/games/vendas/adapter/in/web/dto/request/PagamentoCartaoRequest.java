@@ -1,6 +1,6 @@
-package com.games.vendas.adapter.in.web.dto;
+package com.games.vendas.adapter.in.web.dto.request;
 
-import com.games.cliente.adapter.in.web.dto.CartaoRequest;
+import com.games.cliente.adapter.in.web.dto.request.CartaoRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
