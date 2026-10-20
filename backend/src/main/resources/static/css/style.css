@@ -312,6 +312,9 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--limao); 
 .status-badge.EM_PROCESSAMENTO { color: var(--ambar); background: var(--ambar-fundo); }
 .status-badge.EM_TRANSPORTE { color: var(--ciano); background: var(--ciano-fundo); }
 .status-badge.ENTREGUE { color: var(--texto-suave); background: rgba(255, 255, 255, .04); }
+.status-badge.EM_TROCA { color: var(--ambar); background: var(--ambar-fundo); border-style: dashed; }
+.status-badge.TROCA_AUTORIZADA { color: var(--ciano); background: var(--ciano-fundo); border-style: dashed; }
+.status-badge.TROCADO { color: var(--limao); background: var(--limao-fundo); border-style: dashed; }
 
 /* ---------- plataforma e classificação indicativa ---------- */
 .chip-plataforma {
@@ -390,6 +393,44 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--limao); 
 .mensagem.aviso { color: var(--ambar); border-left-color: var(--ambar); background: linear-gradient(90deg, var(--ambar-fundo), var(--painel) 60%); }
 .mensagem.aviso div + div { margin-top: 6px; }
 .texto-erro { color: #ff8a8a; }
+
+/* ---------- notificações do cliente ---------- */
+.notificacoes {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--ciano);
+}
+.notificacoes-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--fonte-hud);
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+.notificacoes .contador {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 6px;
+  color: #0b0d11;
+  background: var(--ciano);
+  letter-spacing: 0;
+}
+.notificacoes ul { margin: 10px 0 0; padding: 0; list-style: none; }
+.notificacoes li { padding: 7px 0; font-size: 14px; border-top: 1px solid var(--borda); }
+.notificacoes li.nao-lida { color: var(--texto); box-shadow: inset 3px 0 0 var(--ciano); padding-left: 10px; }
+.notificacoes li.lida { color: var(--texto-apagado); }
+.notificacoes li .data { margin-right: 8px; font-family: var(--fonte-hud); font-size: 12px; color: var(--texto-apagado); }
+
+.checkbox-label.inline { margin: 0 6px 0 0; font-size: 13px; }
 
 /* ---------- modais ---------- */
 .modal {

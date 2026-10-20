@@ -83,6 +83,11 @@ public class Jogo {
         this.estoque -= quantidade;
     }
 
+    /** RF0054 — reentrada no estoque dos itens devolvidos em uma troca. */
+    public void darReentrada(int quantidade) {
+        this.estoque += quantidade;
+    }
+
     public void ajustarEstoque(int novoEstoque) {
         this.estoque = novoEstoque;
     }

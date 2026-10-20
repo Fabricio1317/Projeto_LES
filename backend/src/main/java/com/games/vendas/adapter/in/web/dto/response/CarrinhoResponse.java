@@ -1,6 +1,6 @@
 package com.games.vendas.adapter.in.web.dto.response;
 
-import com.games.vendas.application.CarrinhoService.CarrinhoView;
+import com.games.vendas.application.service.CarrinhoService.CarrinhoView;
 import com.games.vendas.domain.entity.CarrinhoItem;
 
 import java.math.BigDecimal;

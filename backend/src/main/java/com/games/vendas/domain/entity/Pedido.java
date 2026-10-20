@@ -143,6 +143,20 @@ public class Pedido {
         mudarStatus(StatusPedido.ENTREGUE);
     }
 
+    /** RN0041 — o cliente pediu a troca da compra inteira. */
+    public void entrarEmTroca() {
+        mudarStatus(StatusPedido.EM_TROCA);
+    }
+
+    public void autorizarTroca() {
+        mudarStatus(StatusPedido.TROCA_AUTORIZADA);
+    }
+
+    /** RN0042 — itens da compra inteira recebidos de volta. */
+    public void concluirTroca() {
+        mudarStatus(StatusPedido.TROCADO);
+    }
+
     private void mudarStatus(StatusPedido novo) {
         this.status = novo;
         this.dataAtualizacao = LocalDateTime.now();

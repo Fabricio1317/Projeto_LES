@@ -27,7 +27,7 @@ public record PedidoResponse(
         List<Pagamento> pagamentos,
         List<CupomUsado> cupons
 ) {
-    public record Item(String titulo, int quantidade, BigDecimal precoUnitario, BigDecimal subtotal) {}
+    public record Item(Long id, Long jogoId, String titulo, int quantidade, BigDecimal precoUnitario, BigDecimal subtotal) {}
 
     public record Pagamento(String numeroMascarado, String bandeira, BigDecimal valor, Boolean aprovado) {}
 
@@ -38,8 +38,8 @@ public record PedidoResponse(
                 p.getStatus(), p.getStatus().getDescricao(), p.getEnderecoEntrega().resumo(),
                 p.getSubtotal(), p.getFrete(), p.getTotal(), p.getValorCupons(), p.getValorTroco(),
                 p.getCupomTrocoGerado(), p.getMotivoReprovacao(),
-                p.getItens().stream().map(i -> new Item(i.getTitulo(), i.getQuantidade(), i.getPrecoUnitario(),
-                        i.getSubtotal())).toList(),
+                p.getItens().stream().map(i -> new Item(i.getId(), i.getJogo().getId(), i.getTitulo(), i.getQuantidade(),
+                        i.getPrecoUnitario(), i.getSubtotal())).toList(),
                 p.getPagamentos().stream().map(pg -> new Pagamento(pg.getNumeroMascarado(), pg.getBandeira().name(),
                         pg.getValor(), pg.getAprovado())).toList(),
                 p.getCupons().stream().map(pc -> new CupomUsado(pc.getCupom().getCodigo(), pc.getCupom().getTipo().name(),

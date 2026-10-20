@@ -55,6 +55,55 @@ function ajustarEstoqueViaApi(jogoId, estoque) {
   cy.request("PATCH", `${API}/jogos/${jogoId}/estoque`, { estoque });
 }
 
+/**
+ * Compra via API (pré-condição dos cenários pós-venda): carrinho → finalização com o
+ * endereço residencial do cadastro e um cartão cadastrado pagando o total.
+ */
+function comprarViaApi(clienteId, cartaoId, itens) {
+  itens.forEach(({ jogoId, quantidade }) =>
+    cy.request("POST", `${API}/clientes/${clienteId}/carrinho/itens`, { jogoId, quantidade }));
+  return cy.request(`${API}/clientes/${clienteId}/enderecos`).its("body").then((enderecos) => {
+    const endereco = enderecos.find((e) => e.tipo !== "COBRANCA");
+    return cy.request(`${API}/clientes/${clienteId}/carrinho`).its("body").then((carrinho) =>
+      cy.request("POST", `${API}/clientes/${clienteId}/carrinho/frete`, { estado: endereco.estado }).its("body")
+        .then((frete) => cy.request("POST", `${API}/clientes/${clienteId}/pedidos`, {
+          enderecoId: endereco.id, cupons: [],
+          cartoes: [{ cartaoId, valor: Number(carrinho.subtotal) + Number(frete.valorFrete) }],
+        }).its("body")));
+  });
+}
+
+/** Espera o sistema validar o pagamento automaticamente e o pedido chegar ao status informado. */
+function aguardarStatusPedido(pedidoId, status, tentativas = 40) {
+  return cy.request(`${API}/pedidos/${pedidoId}`).its("body").then((pedido) => {
+    if (pedido.status === status) return pedido;
+    if (tentativas <= 0) throw new Error(`O pedido ${pedido.codigo} não chegou a ${status} (está ${pedido.status}).`);
+    cy.wait(500);
+    return aguardarStatusPedido(pedidoId, status, tentativas - 1);
+  });
+}
+
+/** Leva um pedido recém-finalizado até ENTREGUE (aprovação automática + ações do administrador via API). */
+function levarAteEntregue(pedidoId) {
+  aguardarStatusPedido(pedidoId, "APROVADA");
+  cy.request("PATCH", `${API}/pedidos/${pedidoId}/despachar`);
+  return cy.request("PATCH", `${API}/pedidos/${pedidoId}/confirmar-entrega`).its("body");
+}
+
+function comprarEntregueViaApi(clienteId, cartaoId, itens) {
+  return comprarViaApi(clienteId, cartaoId, itens).then((pedido) => levarAteEntregue(pedido.id));
+}
+
+function solicitarTrocaViaApi(clienteId, pedidoId, { compraInteira = false, itens = [] } = {}) {
+  return cy.request("POST", `${API}/clientes/${clienteId}/pedidos/${pedidoId}/trocas`, { compraInteira, itens }).its("body");
+}
+
+/** Ciclo completo da troca via API até TROCADO; devolve a troca com o cupom gerado. */
+function concluirTrocaViaApi(trocaId, retornarEstoque = true) {
+  cy.request("PATCH", `${API}/trocas/${trocaId}/autorizar`);
+  return cy.request("PATCH", `${API}/trocas/${trocaId}/confirmar-recebimento`, { retornarEstoque }).its("body");
+}
+
 // --------------------- ações pela interface ---------------------
 function abrirLoja(clienteId) {
   cy.visit("/index.html");
@@ -172,6 +221,36 @@ function linhaEstoque(titulo) {
   return cy.contains("[data-cy=linha-estoque]", titulo);
 }
 
+// A tela se atualiza sozinha enquanto a compra aguarda a validação automática do pagamento.
+const ESPERA_VALIDACAO = { timeout: 20000 };
+
+function linhaMinhaCompra(codigo) {
+  return cy.get(`[data-cy=linha-minha-compra][data-codigo="${codigo}"]`, ESPERA_VALIDACAO);
+}
+
+function statusDaMinhaCompra(codigo) {
+  return linhaMinhaCompra(codigo).find("[data-cy=status-pedido]", ESPERA_VALIDACAO);
+}
+
+function statusDoPedido(codigo) {
+  return cy.get(`[data-cy=linha-pedido][data-codigo="${codigo}"]`, ESPERA_VALIDACAO)
+    .find("[data-cy=status-pedido]", ESPERA_VALIDACAO);
+}
+
+function linhaMinhaTroca(codigo) {
+  return cy.get(`[data-cy=linha-minha-troca][data-codigo="${codigo}"]`);
+}
+
+function linhaTroca(codigo) {
+  return cy.get(`[data-cy=linha-troca][data-codigo="${codigo}"]`);
+}
+
+/** RF0042 — lista os pedidos de troca na gestão de vendas, filtrando pelo status. */
+function filtrarTrocas(status = "") {
+  cy.get("[data-cy=filtro-status-troca]").select(status);
+  cy.get("[data-cy=btn-filtrar-trocas]").click();
+}
+
 function abrirConsultaDoCliente(nome) {
   cy.get("[data-cy=nav-consulta]").click();
   cy.get("[data-cy=filtro-nome]").clear().type(nome);
@@ -182,6 +261,8 @@ function abrirConsultaDoCliente(nome) {
 module.exports = {
   API, PRAZO_PADRAO, CARTAO_VISA, CARTAO_MASTER, CARTAO_RECUSADO, unico,
   criarCliente, criarCartao, criarJogo, criarCupomTroca, definirPrazoCarrinho, ajustarEstoqueViaApi,
+  comprarViaApi, aguardarStatusPedido, levarAteEntregue, comprarEntregueViaApi, solicitarTrocaViaApi, concluirTrocaViaApi,
+  ESPERA_VALIDACAO, linhaMinhaCompra, statusDaMinhaCompra, statusDoPedido, linhaMinhaTroca, linhaTroca, filtrarTrocas,
   abrirLoja, linhaJogo, adicionarAoCarrinho, linhaCarrinho, abrirCheckout, pagarComPrimeiroCartaoCadastrado,
   preencherNovoEndereco, preencherNovoCartao, aplicarCupomPorCodigo, usarCupomDeTroca, finalizarCompra,
   comprarViaInterface, abrirGestaoVendas, linhaPedido, executarAcaoNoPedido, linhaEstoque, abrirConsultaDoCliente,

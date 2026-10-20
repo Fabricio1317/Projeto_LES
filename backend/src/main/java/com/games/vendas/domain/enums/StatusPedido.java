@@ -1,16 +1,20 @@
 package com.games.vendas.domain.enums;
 
 /**
- * Status da compra conforme o DRS: EM PROCESSAMENTO (RF0038), APROVADA ou
- * REPROVADA (RN0038), EM TRANSPORTE (RF0039/RN0039) e ENTREGUE (RF0040/RN0040).
- * A descrição reproduz literalmente a nomenclatura do DRS.
+ * Ciclo de vida da compra. A descrição reproduz literalmente a nomenclatura do DRS.
+ * EM PROCESSAMENTO → APROVADA / REPROVADA (sistema, após validar o pagamento)
+ * APROVADA → EM TRANSPORTE → ENTREGUE (administrador)
+ * ENTREGUE → EM TROCA (cliente pede a troca da compra inteira) → TROCA AUTORIZADA → TROCADO (administrador)
  */
 public enum StatusPedido {
     EM_PROCESSAMENTO("EM PROCESSAMENTO"),
     APROVADA("APROVADA"),
     REPROVADA("REPROVADA"),
     EM_TRANSPORTE("EM TRANSPORTE"),
-    ENTREGUE("ENTREGUE");
+    ENTREGUE("ENTREGUE"),
+    EM_TROCA("EM TROCA"),
+    TROCA_AUTORIZADA("TROCA AUTORIZADA"),
+    TROCADO("TROCADO");
 
     private final String descricao;
 

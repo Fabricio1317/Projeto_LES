@@ -27,6 +27,9 @@ function formatarData(iso) {
 function statusPedidoBadge(p) {
   return `<span class="status-badge ${p.status}" data-cy="status-pedido">${p.statusDescricao}</span>`;
 }
+function statusTrocaBadge(t) {
+  return `<span class="status-badge ${t.status}" data-cy="status-troca">${t.statusDescricao}</span>`;
+}
 function chipPlataforma(plataforma) {
   const nome = plataforma.toLowerCase();
   const familia = nome.includes("playstation") ? "ps" : nome.includes("xbox") ? "xbox"

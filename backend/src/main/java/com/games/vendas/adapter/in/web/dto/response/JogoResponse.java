@@ -1,6 +1,6 @@
 package com.games.vendas.adapter.in.web.dto.response;
 
-import com.games.vendas.application.JogoService.JogoComDisponibilidade;
+import com.games.vendas.application.service.JogoService.JogoComDisponibilidade;
 import com.games.vendas.domain.entity.Jogo;
 
 import java.math.BigDecimal;

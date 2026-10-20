@@ -1,9 +1,9 @@
 package com.games.vendas.config;
 
-import com.games.vendas.adapter.out.persistence.CupomRepository;
-import com.games.vendas.adapter.out.persistence.JogoRepository;
-import com.games.vendas.adapter.out.persistence.ParametroSistemaRepository;
-import com.games.vendas.application.ParametroService;
+import com.games.vendas.adapter.out.persistence.repository.CupomRepository;
+import com.games.vendas.adapter.out.persistence.repository.JogoRepository;
+import com.games.vendas.adapter.out.persistence.repository.ParametroSistemaRepository;
+import com.games.vendas.application.service.ParametroService;
 import com.games.vendas.domain.entity.Cupom;
 import com.games.vendas.domain.entity.Jogo;
 import com.games.vendas.domain.entity.ParametroSistema;

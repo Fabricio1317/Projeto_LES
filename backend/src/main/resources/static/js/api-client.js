@@ -76,14 +76,29 @@ const CarrinhoApi = {
   frete: (clienteId, estado) => apiRequest(`/${clienteId}/carrinho/frete`, json("POST", { estado })),
 };
 
-// RF0033 / RF0038 / RF0025 / RF0039 / RF0040
+// Compras: finalização, consulta, despacho e entrega (a validação do pagamento é automática)
 const PedidoApi = {
   finalizar: (clienteId, payload) => apiRequest(`/${clienteId}/pedidos`, json("POST", payload)),
   doCliente: (clienteId) => apiRequest(`/${clienteId}/pedidos`),
   listar: (status) => apiRequestUrl(`/api/pedidos${status ? `?status=${status}` : ""}`),
-  validarPagamento: (id) => apiRequestUrl(`/api/pedidos/${id}/validar-pagamento`, { method: "PATCH" }),
   despachar: (id) => apiRequestUrl(`/api/pedidos/${id}/despachar`, { method: "PATCH" }),
   confirmarEntrega: (id) => apiRequestUrl(`/api/pedidos/${id}/confirmar-entrega`, { method: "PATCH" }),
+};
+
+// Troca e devolução (RF0040–RF0044)
+const TrocaApi = {
+  solicitar: (clienteId, pedidoId, payload) => apiRequest(`/${clienteId}/pedidos/${pedidoId}/trocas`, json("POST", payload)),
+  doCliente: (clienteId) => apiRequest(`/${clienteId}/trocas`),
+  listar: (status) => apiRequestUrl(`/api/trocas${status ? `?status=${status}` : ""}`),
+  autorizar: (id) => apiRequestUrl(`/api/trocas/${id}/autorizar`, { method: "PATCH" }),
+  confirmarRecebimento: (id, retornarEstoque) =>
+    apiRequestUrl(`/api/trocas/${id}/confirmar-recebimento`, json("PATCH", { retornarEstoque })),
+};
+
+// Notificações do cliente (RNF0046)
+const NotificacaoApi = {
+  listar: (clienteId) => apiRequest(`/${clienteId}/notificacoes`),
+  marcarComoLidas: (clienteId) => apiRequest(`/${clienteId}/notificacoes/lidas`, { method: "PATCH" }),
 };
 
 // RF0036 / RF0037

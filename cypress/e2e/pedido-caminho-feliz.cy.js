@@ -3,6 +3,9 @@
 // Escopo da atividade: RF0031–RF0038, RN0023–RN0025, RN0031, RN0033–RN0036, RNF0011 e RNF0012.
 // Cada teste traz no nome o RF/RN/RNF que valida e os blocos seguem o roteiro mínimo
 // da apresentação. A aplicação deve estar rodando em http://localhost:8080 (ver README).
+// Depois da finalização o sistema valida o pagamento automaticamente (em poucos segundos),
+// por isso o status EM PROCESSAMENTO é conferido no retorno da finalização e no log de
+// auditoria; o restante do ciclo está em venda-ponta-a-ponta.cy.js.
 
 const {
   API, PRAZO_PADRAO, CARTAO_VISA, CARTAO_MASTER, unico,
@@ -139,9 +142,7 @@ describe("Criação de pedido — caminho feliz", () => {
 
             finalizarCompra().then((codigo) => {
               cy.get("[data-cy=mensagem]").should("contain.text", "Status: EM PROCESSAMENTO");
-              cy.contains("[data-cy=linha-minha-compra]", codigo)
-                .should("contain.text", "R$ 197,50")
-                .and("contain.text", "EM PROCESSAMENTO");
+              cy.contains("[data-cy=linha-minha-compra]", codigo).should("contain.text", "R$ 197,50");
             });
           });
         });
@@ -171,7 +172,8 @@ describe("Criação de pedido — caminho feliz", () => {
           cy.get("[data-cy=pagto-novo-valor]").should("have.value", "130,00");
           cy.get("[data-cy=pagto-novo-salvar]").check();
           finalizarCompra().then((codigo) => {
-            cy.contains("[data-cy=linha-minha-compra]", codigo).should("contain.text", "EM PROCESSAMENTO");
+            cy.get("[data-cy=mensagem]").should("contain.text", "Status: EM PROCESSAMENTO");
+            cy.contains("[data-cy=linha-minha-compra]", codigo).should("contain.text", "R$ 130,00");
           });
 
           abrirConsultaDoCliente(nome);
@@ -311,7 +313,6 @@ describe("Criação de pedido — caminho feliz", () => {
             linhaPedido(codigo).find(".col-pagamento")
               .should("contain.text", "VISA 1111: R$ 100,00")
               .and("contain.text", "MASTERCARD 4444: R$ 15,00");
-            linhaPedido(codigo).find("[data-cy=status-pedido]").should("have.text", "EM PROCESSAMENTO");
           });
         });
       });
@@ -511,13 +512,14 @@ describe("Criação de pedido — caminho feliz", () => {
             cy.get("[data-cy=mensagem]").should("contain.text", "Status: EM PROCESSAMENTO");
             cy.get("[data-cy=linha-carrinho]").should("not.exist");
             cy.get("[data-cy=btn-comprar]").should("be.disabled");
-            cy.contains("[data-cy=linha-minha-compra]", codigo).should("contain.text", "EM PROCESSAMENTO");
+            cy.contains("[data-cy=linha-minha-compra]", codigo).should("contain.text", "R$ 115,00");
 
             abrirGestaoVendas();
-            cy.get("[data-cy=filtro-status-pedido]").select("EM_PROCESSAMENTO");
-            cy.get("[data-cy=btn-filtrar-pedidos]").click();
-            linhaPedido(codigo).find("[data-cy=status-pedido]").should("have.text", "EM PROCESSAMENTO");
             linhaPedido(codigo).should("contain.text", "R$ 115,00");
+            cy.get("[data-cy=nav-auditoria]").click();
+            cy.contains("[data-cy=linha-auditoria]", `Compra ${codigo} finalizada`)
+              .should("contain.text", "status EM PROCESSAMENTO")
+              .and("contain.text", `cliente-${cliente.id}`);
           });
         });
       });

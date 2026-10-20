@@ -1,4 +1,4 @@
-// Loja: catálogo, carrinho (RF0031/RF0032) e finalização da compra (RF0033–RF0038).
+// Loja: catálogo, carrinho, finalização da compra, acompanhamento dos pedidos, trocas, cupons e notificações.
 
 const loja = {
   clienteId: null,
@@ -8,6 +8,10 @@ const loja = {
   cupons: [],
   frete: null,
   timerCarrinho: null,
+  timerPedidos: null,
+  pedidos: [],
+  trocas: [],
+  pedidoTroca: null,
 };
 
 function el(id) {
@@ -51,12 +55,13 @@ el("loja-cliente").addEventListener("change", (ev) => {
 
 async function carregarLoja() {
   clearTimeout(loja.timerCarrinho);
+  clearTimeout(loja.timerPedidos);
   el("checkout").hidden = true;
   loja.clienteId = el("loja-cliente").value || null;
   el("loja-conteudo").hidden = !loja.clienteId;
   if (!loja.clienteId) return;
   await carregarCarrinho();
-  await Promise.all([carregarCatalogo(), carregarMinhasCompras()]);
+  await Promise.all([carregarCatalogo(), carregarAreaDoCliente()]);
 }
 
 // --------------------- catálogo ---------------------
@@ -412,7 +417,7 @@ el("btn-finalizar-compra").addEventListener("click", async () => {
     const pedido = await PedidoApi.finalizar(loja.clienteId, montarPedido());
     el("checkout").hidden = true;
     await carregarCarrinho();
-    await Promise.all([carregarCatalogo(), carregarMinhasCompras()]);
+    await Promise.all([carregarCatalogo(), carregarAreaDoCliente()]);
     const troco = pedido.cupomTrocoGerado
       ? ` Cupom de troca gerado com a diferença: ${pedido.cupomTrocoGerado} (${formatarMoeda(pedido.valorTroco)}).` : "";
     mostrarMensagem(`Compra ${pedido.codigo} finalizada com sucesso! Status: ${pedido.statusDescricao}.${troco}`, "sucesso");
@@ -426,19 +431,143 @@ el("btn-finalizar-compra").addEventListener("click", async () => {
   }
 });
 
-// --------------------- minhas compras ---------------------
-async function carregarMinhasCompras() {
+// --------------------- área do cliente: compras, trocas, cupons e notificações ---------------------
+async function carregarAreaDoCliente() {
+  clearTimeout(loja.timerPedidos);
   try {
-    const pedidos = await PedidoApi.doCliente(loja.clienteId);
-    el("tbody-minhas-compras").innerHTML = pedidos.map((p) => `
-      <tr data-cy="linha-minha-compra">
-        <td class="codigo">${p.codigo}</td>
-        <td class="data">${formatarData(p.dataCompra)}</td>
-        <td class="preco">${formatarMoeda(p.total)}</td>
-        <td data-cy="cupom-troco-gerado">${p.cupomTrocoGerado ? `${p.cupomTrocoGerado} (${formatarMoeda(p.valorTroco)})` : "—"}</td>
-        <td>${statusPedidoBadge(p)}</td>
-      </tr>`).join("");
+    const [pedidos, trocas, cupons, notificacoes] = await Promise.all([
+      PedidoApi.doCliente(loja.clienteId), TrocaApi.doCliente(loja.clienteId),
+      CupomApi.trocaDoCliente(loja.clienteId), NotificacaoApi.listar(loja.clienteId)]);
+    loja.pedidos = pedidos;
+    loja.trocas = trocas;
+    renderizarMinhasCompras(pedidos);
+    renderizarMinhasTrocas(trocas);
+    renderizarMeusCupons(cupons);
+    renderizarNotificacoes(notificacoes);
+    // enquanto houver compra aguardando a validação automática do pagamento, atualiza a área sozinha
+    if (pedidos.some((p) => p.status === "EM_PROCESSAMENTO")) {
+      loja.timerPedidos = setTimeout(() => { if (loja.clienteId) carregarAreaDoCliente(); }, 1500);
+    }
   } catch (erro) {
     mostrarMensagem(mensagemDeErro(erro), "erro");
   }
 }
+
+function renderizarMinhasCompras(pedidos) {
+  el("tbody-minhas-compras").innerHTML = pedidos.map((p) => {
+    const podeTrocar = p.status === "ENTREGUE";
+    const titulo = podeTrocar ? "Solicitar troca" : "Troca disponível apenas para pedidos ENTREGUE (RN0043)";
+    return `
+      <tr data-cy="linha-minha-compra" data-codigo="${p.codigo}">
+        <td class="codigo">${p.codigo}</td>
+        <td class="data">${formatarData(p.dataCompra)}</td>
+        <td>${p.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+        <td class="preco">${formatarMoeda(p.total)}</td>
+        <td data-cy="cupom-troco-gerado">${p.cupomTrocoGerado ? `${p.cupomTrocoGerado} (${formatarMoeda(p.valorTroco)})` : "—"}</td>
+        <td>${statusPedidoBadge(p)}</td>
+        <td class="acoes">
+          <button type="button" class="btn-secondary btn-sm" data-cy="btn-solicitar-troca" data-id="${p.id}"
+                  title="${titulo}" ${podeTrocar ? "" : "disabled"}>Solicitar troca</button>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+function renderizarMinhasTrocas(trocas) {
+  el("minhas-trocas-vazio").hidden = trocas.length > 0;
+  el("tbody-minhas-trocas").innerHTML = trocas.map((t) => `
+    <tr data-cy="linha-minha-troca" data-codigo="${t.codigo}">
+      <td class="codigo">${t.codigo}</td>
+      <td class="codigo">${t.pedidoCodigo}</td>
+      <td>${t.tipoDescricao}</td>
+      <td>${t.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+      <td class="preco">${formatarMoeda(t.valor)}</td>
+      <td data-cy="troca-cupom-gerado">${t.cupomGerado || "—"}</td>
+      <td>${statusTrocaBadge(t)}</td>
+    </tr>`).join("");
+}
+
+// RF0044 — cupons de troca disponíveis para usar em novas compras
+function renderizarMeusCupons(cupons) {
+  el("meus-cupons-vazio").hidden = cupons.length > 0;
+  el("tbody-meus-cupons").innerHTML = cupons.map((c) => `
+    <tr data-cy="linha-meu-cupom" data-codigo="${c.codigo}">
+      <td class="codigo">${c.codigo}</td>
+      <td class="preco">${formatarMoeda(c.valor)}</td>
+    </tr>`).join("");
+}
+
+// RNF0046 — notificações ao cliente
+function renderizarNotificacoes(notificacoes) {
+  const naoLidas = notificacoes.filter((n) => !n.lida).length;
+  el("painel-notificacoes").hidden = notificacoes.length === 0;
+  document.querySelector("[data-cy=qtd-notificacoes-nao-lidas]").textContent = naoLidas;
+  el("btn-marcar-lidas").hidden = naoLidas === 0;
+  el("lista-notificacoes").innerHTML = notificacoes.map((n) => `
+    <li data-cy="linha-notificacao" class="${n.lida ? "lida" : "nao-lida"}">
+      <span class="data">${formatarData(n.dataHora)}</span> ${n.mensagem}
+    </li>`).join("");
+}
+
+el("btn-marcar-lidas").addEventListener("click", async () => {
+  try {
+    await NotificacaoApi.marcarComoLidas(loja.clienteId);
+    await carregarAreaDoCliente();
+  } catch (erro) {
+    mostrarMensagem(mensagemDeErro(erro), "erro");
+  }
+});
+
+// --------------------- solicitar troca (RF0040 / RN0041 / RN0043) ---------------------
+el("tbody-minhas-compras").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button[data-cy=btn-solicitar-troca]");
+  if (btn && !btn.disabled) abrirModalTroca(Number(btn.dataset.id));
+});
+
+function quantidadeEmTroca(pedidoItemId) {
+  return (loja.trocas || []).flatMap((t) => t.itens)
+    .filter((i) => i.pedidoItemId === pedidoItemId)
+    .reduce((soma, i) => soma + i.quantidade, 0);
+}
+
+function abrirModalTroca(pedidoId) {
+  limparMensagem();
+  const pedido = loja.pedidos.find((p) => p.id === pedidoId);
+  loja.pedidoTroca = pedido;
+  el("troca-pedido-codigo").textContent = pedido.codigo;
+  el("troca-compra-inteira").checked = false;
+  el("tbody-itens-troca").innerHTML = pedido.itens.map((i) => {
+    const disponivel = i.quantidade - quantidadeEmTroca(i.id);
+    return `
+      <tr data-cy="linha-item-troca" data-item-id="${i.id}">
+        <td>${i.titulo}</td>
+        <td>${i.quantidade}</td>
+        <td data-cy="troca-disponivel">${disponivel}</td>
+        <td><input type="number" min="0" max="${disponivel}" value="0" class="input-qtd" data-cy="troca-qtd"
+                   ${disponivel === 0 ? "disabled" : ""}></td>
+      </tr>`;
+  }).join("");
+  el("modal-troca").hidden = false;
+}
+
+el("troca-compra-inteira").addEventListener("change", (ev) => {
+  document.querySelectorAll("[data-cy=troca-qtd]").forEach((campo) => { campo.disabled = ev.target.checked; });
+});
+
+el("btn-cancelar-troca").addEventListener("click", () => { el("modal-troca").hidden = true; });
+
+el("btn-confirmar-troca").addEventListener("click", async () => {
+  const compraInteira = el("troca-compra-inteira").checked;
+  const itens = [...document.querySelectorAll("[data-cy=linha-item-troca]")]
+    .map((tr) => ({ pedidoItemId: Number(tr.dataset.itemId), quantidade: parseInt(tr.querySelector("[data-cy=troca-qtd]").value, 10) || 0 }))
+    .filter((i) => i.quantidade > 0);
+  try {
+    const trocas = await TrocaApi.solicitar(loja.clienteId, loja.pedidoTroca.id, { compraInteira, itens: compraInteira ? [] : itens });
+    el("modal-troca").hidden = true;
+    mostrarMensagem(`Troca solicitada: ${trocas.map((t) => t.codigo).join(", ")} — status ${trocas[0].statusDescricao}.`, "sucesso");
+    await carregarAreaDoCliente();
+  } catch (erro) {
+    el("modal-troca").hidden = true;
+    mostrarMensagem(mensagemDeErro(erro), "erro");
+  }
+});

@@ -187,6 +187,15 @@
     </div>
 
     <div id="loja-conteudo" data-cy="loja-conteudo" hidden>
+      <!-- RNF0046 -->
+      <div id="painel-notificacoes" class="notificacoes" data-cy="painel-notificacoes" hidden>
+        <div class="notificacoes-topo">
+          <span>Notificações <strong class="contador" data-cy="qtd-notificacoes-nao-lidas">0</strong></span>
+          <button type="button" id="btn-marcar-lidas" class="btn-secondary btn-sm" data-cy="btn-marcar-notificacoes-lidas">Marcar como lidas</button>
+        </div>
+        <ul id="lista-notificacoes" data-cy="lista-notificacoes"></ul>
+      </div>
+
       <h3>Catálogo</h3>
       <table class="tabela-clientes" data-cy="tabela-catalogo">
         <thead>
@@ -343,18 +352,36 @@
       </div>
 
       <h3>Minhas compras</h3>
+      <p class="hint">Após a finalização, o sistema valida o pagamento automaticamente e a compra passa a APROVADA ou REPROVADA. A troca pode ser solicitada para compras ENTREGUE.</p>
       <table class="tabela-clientes" data-cy="tabela-minhas-compras">
-        <thead><tr><th>Código</th><th>Data</th><th>Total</th><th>Cupom de troca gerado</th><th>Status</th></tr></thead>
+        <thead><tr><th>Código</th><th>Data</th><th>Itens</th><th>Total</th><th>Cupom de troca gerado</th><th>Status</th><th class="col-acoes">Ações</th></tr></thead>
         <tbody id="tbody-minhas-compras" data-cy="tbody-minhas-compras"></tbody>
       </table>
+
+      <!-- RF0040 / RN0041 -->
+      <h3>Minhas trocas</h3>
+      <table class="tabela-clientes" data-cy="tabela-minhas-trocas">
+        <thead><tr><th>Troca</th><th>Pedido</th><th>Tipo</th><th>Itens</th><th>Valor</th><th>Cupom gerado</th><th>Status</th></tr></thead>
+        <tbody id="tbody-minhas-trocas" data-cy="tbody-minhas-trocas"></tbody>
+      </table>
+      <p id="minhas-trocas-vazio" class="hint" data-cy="minhas-trocas-vazio">Nenhuma troca solicitada.</p>
+
+      <!-- RF0044 -->
+      <h3>Meus cupons de troca</h3>
+      <table class="tabela-clientes" data-cy="tabela-meus-cupons">
+        <thead><tr><th>Cupom</th><th>Valor</th></tr></thead>
+        <tbody id="tbody-meus-cupons" data-cy="tbody-meus-cupons"></tbody>
+      </table>
+      <p id="meus-cupons-vazio" class="hint" data-cy="meus-cupons-vazio">Nenhum cupom de troca disponível. Os cupons podem ser usados na finalização da compra.</p>
     </div>
   </section>
 
-  <!-- ===================== GESTÃO DE VENDAS (RN0037–RN0040) ===================== -->
+  <!-- ===================== GESTÃO DE VENDAS (administrador) ===================== -->
   <section id="tab-vendas" class="tab-content" hidden>
     <h2>Gestão de vendas</h2>
 
     <h3>Compras</h3>
+    <p class="hint">A validação do pagamento é feita automaticamente pelo sistema. Compras APROVADAS podem ser despachadas e, depois, ter a entrega confirmada.</p>
     <form id="form-filtro-pedidos" class="filtros" data-cy="form-filtro-pedidos">
       <label>Status
         <select name="status" data-cy="filtro-status-pedido">
@@ -364,6 +391,9 @@
           <option value="REPROVADA">REPROVADA</option>
           <option value="EM_TRANSPORTE">EM TRANSPORTE</option>
           <option value="ENTREGUE">ENTREGUE</option>
+          <option value="EM_TROCA">EM TROCA</option>
+          <option value="TROCA_AUTORIZADA">TROCA AUTORIZADA</option>
+          <option value="TROCADO">TROCADO</option>
         </select>
       </label>
       <button type="submit" class="btn-secondary" data-cy="btn-filtrar-pedidos">Filtrar</button>
@@ -373,6 +403,26 @@
         <tr><th>Código</th><th>Cliente</th><th>Data</th><th>Total</th><th>Pagamento</th><th>Status</th><th class="col-acoes">Ações</th></tr>
       </thead>
       <tbody id="tbody-pedidos" data-cy="tbody-pedidos"></tbody>
+    </table>
+
+    <!-- RF0042 / RF0041 / RF0043 -->
+    <h3>Pedidos de troca</h3>
+    <form id="form-filtro-trocas" class="filtros" data-cy="form-filtro-trocas">
+      <label>Status
+        <select name="status" data-cy="filtro-status-troca">
+          <option value="">Todos</option>
+          <option value="EM_TROCA">EM TROCA</option>
+          <option value="TROCA_AUTORIZADA">TROCA AUTORIZADA</option>
+          <option value="TROCADO">TROCADO</option>
+        </select>
+      </label>
+      <button type="submit" class="btn-secondary" data-cy="btn-filtrar-trocas">Filtrar</button>
+    </form>
+    <table class="tabela-clientes" data-cy="tabela-trocas">
+      <thead>
+        <tr><th>Troca</th><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Itens</th><th>Valor</th><th>Cupom gerado</th><th>Status</th><th class="col-acoes">Ações</th></tr>
+      </thead>
+      <tbody id="tbody-trocas" data-cy="tbody-trocas"></tbody>
     </table>
 
     <h3>Estoque</h3>
@@ -639,6 +689,26 @@
           <button type="submit" class="btn-primary" data-cy="btn-adicionar-cartao">Adicionar cartão</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ===================== SOLICITAR TROCA (RF0040 / RN0041) - modal ===================== -->
+  <div id="modal-troca" class="modal" hidden data-cy="modal-troca">
+    <div class="modal-box">
+      <h2>Solicitar troca</h2>
+      <p class="hint">Pedido <strong id="troca-pedido-codigo" data-cy="troca-pedido-codigo"></strong>. Cada item selecionado gera um pedido de troca; ao trocar a compra inteira, todos os itens são incluídos.</p>
+      <label class="checkbox-label">
+        <input type="checkbox" id="troca-compra-inteira" data-cy="troca-compra-inteira">
+        Trocar a compra inteira
+      </label>
+      <table class="tabela-clientes" data-cy="tabela-itens-troca">
+        <thead><tr><th>Jogo</th><th>Comprado</th><th>Disponível para troca</th><th>Quantidade a trocar</th></tr></thead>
+        <tbody id="tbody-itens-troca" data-cy="tbody-itens-troca"></tbody>
+      </table>
+      <div class="modal-actions">
+        <button type="button" id="btn-cancelar-troca" class="btn-secondary" data-cy="btn-cancelar-troca">Cancelar</button>
+        <button type="button" id="btn-confirmar-troca" class="btn-primary" data-cy="btn-confirmar-troca">Solicitar troca</button>
+      </div>
     </div>
   </div>
 
