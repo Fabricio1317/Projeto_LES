@@ -1,6 +1,7 @@
 package com.games.cliente.adapter.in.web.handler;
 
 import com.games.cliente.adapter.in.web.dto.response.ErroResponse;
+import com.games.cliente.application.exception.AcessoNegadoException;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
 import com.games.cliente.application.exception.RecursoNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;
@@ -12,6 +13,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -69,6 +71,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleRegraNegocio(RegraNegocioException ex) {
         return ResponseEntity.unprocessableEntity()
                 .body(ErroResponse.of(422, ex.getCodigoRegra(), ex.getMessage()));
+    }
+
+    /** Parâmetro de URL em formato inválido (ex.: data que não segue aaaa-mm-dd). */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErroResponse> handleParametroInvalido(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(ErroResponse.of(400, "DADOS_INVALIDOS",
+                "Valor inválido para o parâmetro '" + ex.getName() + "'."));
+    }
+
+    @ExceptionHandler(AcessoNegadoException.class)
+    public ResponseEntity<ErroResponse> handleAcessoNegado(AcessoNegadoException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErroResponse.of(403, "ACESSO_RESTRITO", ex.getMessage()));
     }
 
     @ExceptionHandler(ClienteNaoEncontradoException.class)

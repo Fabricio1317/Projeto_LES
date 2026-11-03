@@ -31,6 +31,16 @@
   --fonte-hud: "Chakra Petch", "Segoe UI", sans-serif;
   --fonte-texto: "Barlow", "Segoe UI", sans-serif;
 
+  /* séries do gráfico: paleta categórica validada para o fundo escuro (contraste e daltonismo) */
+  --serie-1: #3987e5;
+  --serie-2: #d95926;
+  --serie-3: #199e70;
+  --serie-4: #c98500;
+  --serie-5: #d55181;
+  --serie-6: #008300;
+  --serie-7: #9085e9;
+  --serie-8: #e66767;
+
   --recorte: 10px;
   --recorte-p: 6px;
 }
@@ -522,6 +532,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--limao); 
 ::-webkit-scrollbar-thumb:hover { background: var(--limao-escuro); }
 
 @media (max-width: 900px) {
+  .perfil-usuario { padding: 0 0 10px; }
   .topbar { flex-direction: column; padding: 0 16px; }
   .topbar nav { overflow-x: auto; padding-bottom: 6px; }
   .tab-btn { padding: 10px 12px; }
@@ -530,3 +541,75 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--limao); 
 
 .codigo { font-family: var(--fonte-hud); font-size: 13px; letter-spacing: .03em; white-space: nowrap; }
 .data { font-size: 13.5px; color: var(--texto-suave); white-space: nowrap; }
+
+/* ---------- perfil (barra superior) ---------- */
+.perfil-usuario {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  margin: 0;
+  white-space: nowrap;
+}
+.perfil-usuario select { padding: 6px 8px; font-size: 13px; }
+
+/* ---------- análise de vendas (RF0055 / RNF0043) ---------- */
+.analise-categorias { margin: 0 0 20px; }
+#lista-categorias { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-categoria {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+  padding: 6px 10px;
+  font-family: var(--fonte-texto);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--texto);
+  background: var(--campo);
+  border: 1px solid var(--borda);
+  cursor: pointer;
+}
+.chip-categoria:has(input:checked) { border-color: var(--borda-forte); background: var(--painel-2); }
+.amostra-cor { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--borda); flex: none; }
+
+.analise-resultado {
+  padding: 18px 20px;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+}
+.analise-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.analise-legenda { display: flex; flex-wrap: wrap; gap: 16px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.analise-legenda li { display: flex; align-items: center; gap: 8px; color: var(--texto-suave); }
+.analise-legenda strong { font-family: var(--fonte-hud); color: var(--texto); }
+
+.analise-grafico { position: relative; width: 100%; overflow: hidden; }
+.analise-grafico svg { display: block; }
+.analise-grafico .grade { stroke: var(--borda); stroke-width: 1; }
+.analise-grafico .eixo { stroke: var(--borda-forte); stroke-width: 1; }
+.analise-grafico .eixo-y { fill: var(--texto-apagado); font-size: 11.5px; text-anchor: end; font-variant-numeric: tabular-nums; }
+.analise-grafico .eixo-x { fill: var(--texto-apagado); font-size: 11.5px; text-anchor: middle; }
+.analise-grafico .linha { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.analise-grafico .ponto { stroke: var(--painel); stroke-width: 2; }
+.analise-grafico .rotulo-direto { fill: var(--texto-suave); font-size: 12.5px; }
+.analise-grafico .mira { stroke: var(--texto-apagado); stroke-width: 1; stroke-dasharray: 3 3; }
+.analise-grafico .captura { fill: transparent; cursor: crosshair; }
+
+.tooltip-grafico {
+  position: absolute;
+  z-index: 2;
+  min-width: 170px;
+  padding: 10px 12px;
+  font-size: 13px;
+  pointer-events: none;
+  background: var(--painel-2);
+  border: 1px solid var(--borda-forte);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+}
+.tooltip-grafico strong { display: block; margin-bottom: 6px; font-family: var(--fonte-hud); }
+.tooltip-grafico div { display: flex; align-items: center; gap: 8px; color: var(--texto-suave); }
+.tooltip-grafico .valor { margin-left: auto; font-family: var(--fonte-hud); color: var(--texto); font-variant-numeric: tabular-nums; }
+
+.analise-tabela { margin-top: 14px; }
+.analise-tabela summary { cursor: pointer; font-size: 14px; color: var(--texto-suave); }
+.analise-tabela table { margin-top: 10px; }
+.analise-tabela .linha-total td { font-weight: 600; border-top: 2px solid var(--borda-forte); }

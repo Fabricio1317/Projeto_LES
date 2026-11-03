@@ -34,10 +34,10 @@ function criarCartao(clienteId, cartao = CARTAO_VISA) {
   return cy.request("POST", `${API}/clientes/${clienteId}/cartoes`, { ...cartao, preferencial: false }).its("body");
 }
 
-/** Edição física de R$ 50,00 e 0,5 kg: 2 unidades + frete SP (R$ 10,00 + 1 kg × R$ 5,00) = R$ 115,00. */
-function criarJogo({ preco = 50, estoque = 10, pesoKg = 0.5 } = {}) {
+/** Edição física de R$ 50,00 e 0,5 kg: 2 unidades + frete SP (R$ 10,00 + 1 kg × R$ 5,00) = R$ 115,00. O gênero é a categoria. */
+function criarJogo({ preco = 50, estoque = 10, pesoKg = 0.5, genero = "Ação" } = {}) {
   return cy.request("POST", `${API}/jogos`, {
-    titulo: `Jogo [${unico()}]`, plataforma: "PlayStation 5", genero: "Ação", desenvolvedora: "Estúdio Teste",
+    titulo: `Jogo [${unico()}]`, plataforma: "PlayStation 5", genero, desenvolvedora: "Estúdio Teste",
     distribuidora: "Distribuidora Teste", classificacaoIndicativa: "12", ano: 2024, codigoBarras: "7890000000000",
     preco, estoque, pesoKg,
   }).its("body");

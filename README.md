@@ -11,6 +11,9 @@ cobrindo os RF/RN/RNF do DRS:
   (APROVADA/REPROVADA), despacho, entrega e o ciclo completo da troca
   (solicitação, autorização com notificação, recebimento, cupom de troca e
   reentrada no estoque).
+- **Análise de vendas** — histórico de vendas por período comparando
+  categorias de produtos em um gráfico de linhas (RF0055 / RNF0043), só para
+  o perfil administrador.
 
 ## Estrutura
 
@@ -38,25 +41,27 @@ nexus-crud/
 │       └── vendas/
 │           ├── domain/
 │           │   ├── entity/                     # Jogo, Carrinho, CarrinhoItem, Pedido, PedidoItem, PagamentoCartao, PedidoCupom, Cupom, EnderecoEntrega, ParametroSistema, Troca, TrocaItem, Notificacao
-│           │   └── enums/                      # StatusPedido, StatusTroca, TipoTroca, TipoCupom, SituacaoItemCarrinho
+│           │   └── enums/                      # StatusPedido, StatusTroca, TipoTroca, TipoCupom, SituacaoItemCarrinho, PerfilUsuario
 │           ├── application/
-│           │   ├── service/                    # CarrinhoService, PedidoService, TrocaService, NotificacaoService, CupomService, JogoService, EstoqueService, FreteService, ParametroService
+│           │   ├── service/                    # CarrinhoService, PedidoService, TrocaService, NotificacaoService, CupomService, JogoService, EstoqueService, FreteService, ParametroService, AnaliseVendasService
 │           │   ├── event/                      # CompraFinalizadaEvent
 │           │   ├── listener/                   # ValidacaoAutomaticaPagamento (validação automática do pagamento)
 │           │   └── gateway/                    # OperadoraCartaoSimulada (operadora de cartão simulada)
 │           ├── adapter/
 │           │   ├── in/web/
-│           │   │   ├── controller/             # CarrinhoController, PedidoController, TrocaController, NotificacaoController, CupomController, JogoController, ParametroController
+│           │   │   ├── controller/             # CarrinhoController, PedidoController, TrocaController, NotificacaoController, CupomController, JogoController, ParametroController, AnaliseVendasController
+│           │   │   ├── interceptor/            # PerfilAdministradorInterceptor (libera a análise só para o administrador)
 │           │   │   └── dto/request/ e dto/response/
 │           │   └── out/persistence/
 │           │       └── repository/             # repositórios Spring Data JPA
-│           └── config/                         # CargaInicialDominio (RNF0013)
+│           └── config/                         # CargaInicialDominio (RNF0013), CargaHistoricoVendas (massa de dados da análise), WebConfig
 │       resources/                              # application.properties, static/ (frontend)
 │       test/java/.../application/service/      # testes unitários (JUnit + Mockito) do ClienteService
 ├── cypress/
 │   ├── e2e/cliente-crud.cy.js          # suíte do módulo de clientes (37 testes)
 │   ├── e2e/pedido-caminho-feliz.cy.js  # criação de pedido — suíte da fase anterior (23 testes)
 │   ├── e2e/venda-ponta-a-ponta.cy.js   # venda do carrinho ao fechamento da troca — roteiro mínimo 1–11 (27 testes)
+│   ├── e2e/analise-vendas.cy.js        # análise de vendas por categoria — roteiro mínimo 1–8 (9 testes)
 │   └── support/                        # cpf-generator.js e vendas-helpers.js (pré-condições e ações comuns)
 ├── cypress.config.js
 └── package.json
@@ -87,7 +92,8 @@ npm install
 npx cypress open     # modo interativo, bom para a apresentação ao vivo
 # ou
 npx cypress run      # modo headless, roda todas as suítes
-npx cypress run --spec cypress/e2e/venda-ponta-a-ponta.cy.js    # só a venda de ponta a ponta (apresentação)
+npx cypress run --spec cypress/e2e/analise-vendas.cy.js         # só a análise de vendas (apresentação)
+npx cypress run --spec cypress/e2e/venda-ponta-a-ponta.cy.js    # só a venda de ponta a ponta
 npx cypress run --spec cypress/e2e/pedido-caminho-feliz.cy.js   # só a criação de pedido (fase anterior)
 ```
 
@@ -112,7 +118,8 @@ e notificações. A aba **Gestão de vendas** é a visão do administrador:
 compras (despachar e confirmar entrega), pedidos de troca (autorizar e
 confirmar recebimento), estoque, cupons e parâmetros. A validação do
 pagamento não tem botão: é feita pelo sistema, e as telas se atualizam
-sozinhas enquanto há compra EM PROCESSAMENTO.
+sozinhas enquanto há compra EM PROCESSAMENTO. A aba **Análise de vendas** só
+aparece com o perfil **Administrador**, escolhido no canto superior direito.
 
 ## Rastreabilidade — Clientes (`cliente-crud.cy.js`)
 
@@ -297,6 +304,65 @@ API e os nomes dos testes desta suíte seguem a atividade; a correspondência é
 | `GET /api/clientes/{id}/notificacoes` · `PATCH /api/clientes/{id}/notificacoes/lidas` | Notificações do cliente |
 | `GET /api/clientes/{id}/cupons` | Cupons de troca disponíveis para o cliente |
 
+## Análise de vendas por categoria (`analise-vendas.cy.js`)
+
+Suíte da apresentação desta atividade: histórico de vendas por período,
+comparando categorias de produtos em um gráfico de linhas.
+
+### Critérios adotados
+
+| Critério da atividade | Como está implementado |
+|---|---|
+| Comparação entre categorias | A categoria é o **gênero** do jogo (Ação, RPG, Esporte…), como no mapeamento livro → jogo. Até 8 categorias por consulta, uma linha por categoria. |
+| Acesso só do administrador | O sistema não tem login: o perfil é escolhido no canto superior direito e enviado à API no cabeçalho `X-Perfil`. O `PerfilAdministradorInterceptor` recusa `/api/analises/**` com **403** (`ACESSO_RESTRITO`) para qualquer outro perfil, e a aba só aparece para o Administrador. |
+| Eixo horizontal por mês/ano | Todos os meses do período aparecem, inclusive os sem vendas (valor 0), para a linha ser contínua. |
+| Somente compras ENTREGUE | A consulta filtra `status = ENTREGUE`. Compras EM TRANSPORTE, APROVADA, REPROVADA, TROCADO etc. não entram. |
+| Valor total em reais | Soma de preço × quantidade dos itens da categoria, pela data da compra. O frete não entra, porque não pertence a uma categoria. |
+
+### Roteiro mínimo de demonstração → teste
+
+| Roteiro | Teste Cypress |
+|---|---|
+| 1. Uma categoria em período válido, valores iguais à soma das vendas ENTREGUE da base | "os valores mensais de uma categoria são iguais à soma das vendas ENTREGUE registradas na base" |
+| 2. Comparação entre duas ou mais categorias | "compara duas ou mais categorias no mesmo período, uma linha por categoria" |
+| 3. Gráfico de linhas em reais por mês | "apresenta um gráfico de linhas com o eixo X por mês/ano e os valores em reais" |
+| 4. Nova data de início ou de fim, novo resultado | "alterar a data de início ou de fim gera um novo resultado no gráfico" |
+| 5. Compra não ENTREGUE não contabilizada | "compras com status diferente de ENTREGUE não são contabilizadas no gráfico" |
+| 6. Compra que passa a ENTREGUE aparece na consulta seguinte | "a compra que passa a ENTREGUE dentro do período aparece na consulta seguinte" |
+| 7. Acesso do administrador permitido, dos outros perfis negado | "o gráfico é acessível ao administrador e negado a outros perfis" |
+| 8. Tempo de resposta de até 1 segundo | "a consulta do histórico responde em no máximo 1 segundo" |
+
+Os valores esperados nos roteiros 1, 2 e 4 não são fixos no teste: são
+calculados a partir das compras ENTREGUE que a API de pedidos devolve, e
+comparados mês a mês com o gráfico e com a tabela. Os roteiros 5 e 6 criam
+uma categoria nova só para o teste, para o resultado não depender de outras
+compras.
+
+### Massa de dados
+
+Na subida com o banco vazio, a `CargaHistoricoVendas` cadastra a cliente
+"Cliente Histórico de Vendas" e 21 compras de 7 categorias, espalhadas pelos
+últimos seis meses e pelo mês atual, nos status ENTREGUE, EM TRANSPORTE,
+APROVADA, REPROVADA e TROCADO. As datas são relativas ao dia da subida, então
+o gráfico sempre tem histórico.
+
+### Endpoints
+
+| Método e caminho | Uso |
+|---|---|
+| `GET /api/analises/categorias` | Categorias disponíveis para comparar |
+| `GET /api/analises/vendas-por-categoria?inicio=2026-04-01&fim=2026-10-31&categorias=RPG&categorias=Ação` | Histórico do período: os meses (eixo X) e, por categoria, o valor de cada mês e o total |
+
+Período inválido (início depois do fim, data faltando) ou nenhuma categoria
+selecionada devolvem **422** com o código `RF0055`.
+
+### Desempenho (RNF0011)
+
+A soma é feita no banco, em uma única consulta agrupada por categoria e mês
+(índice em `status, data_compra` do pedido). A tela mostra o tempo de cada
+consulta ("Consulta respondida em X ms"), e o teste do roteiro 8 confere o
+limite de 1 segundo.
+
 ## Produto: jogo no lugar de livro
 
 O DRS descreve um e-commerce de livros; o Nexus é um e-commerce de jogos.
@@ -412,6 +478,8 @@ conforme o texto literal do requisito; remoções não geram log.
 - **Controle de estoque** — RF0051/RF0052 e RN0050–RN0062. Existe apenas o
   ajuste manual de estoque na Gestão de vendas; a baixa por venda (RF0053)
   e a reentrada por troca (RF0054) estão implementadas.
-- **Análise e recomendação** — RF0055–RF0058, RN0071–RN0074 e RNF0043–RNF0046
-  (numeração do DRS; não confundir com RNF0045/RNF0046 da atividade, que
-  correspondem às RN0045/RN0046 do DRS).
+- **Análise (além do RF0055/RNF0043) e recomendação** — RF0056–RF0058,
+  RN0071–RN0074 e RNF0044–RNF0046 (numeração do DRS; não confundir com
+  RNF0045/RNF0046 da atividade de venda, que correspondem às RN0045/RN0046
+  do DRS). Comparação por produto individual, exportação e projeções também
+  ficam de fora, conforme a atividade.

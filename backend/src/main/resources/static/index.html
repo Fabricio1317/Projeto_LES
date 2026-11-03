@@ -25,7 +25,15 @@
     <button class="tab-btn" data-tab="tab-loja" data-cy="nav-loja">Loja</button>
     <button class="tab-btn" data-tab="tab-vendas" data-cy="nav-vendas">Gestão de vendas</button>
     <button class="tab-btn" data-tab="tab-auditoria" data-cy="nav-auditoria">Auditoria</button>
+    <button class="tab-btn" data-tab="tab-analise" data-cy="nav-analise" hidden>Análise de vendas</button>
   </nav>
+  <!-- Sem login no sistema: o perfil escolhido aqui é enviado à API no cabeçalho X-Perfil -->
+  <label class="perfil-usuario">Perfil
+    <select id="perfil-usuario" data-cy="perfil-usuario">
+      <option value="CLIENTE">Cliente</option>
+      <option value="ADMINISTRADOR">Administrador</option>
+    </select>
+  </label>
 </header>
 
 <main>
@@ -472,6 +480,48 @@
     </form>
   </section>
 
+  <!-- ===================== ANÁLISE DE VENDAS (RF0055 / RNF0043) — administrador ===================== -->
+  <section id="tab-analise" class="tab-content" hidden>
+    <h2>Análise de vendas por categoria</h2>
+    <p class="hint">Valor total vendido (preço × quantidade dos itens) em compras <strong>ENTREGUE</strong>, agrupado pelo mês da compra. Compare até 8 categorias.</p>
+
+    <div id="analise-acesso-negado" class="mensagem erro" data-cy="analise-acesso-negado" hidden>
+      Acesso restrito ao perfil administrador.
+    </div>
+
+    <form id="form-analise" class="analise-filtros" data-cy="form-analise" novalidate>
+      <div class="filtros">
+        <label>Data de início
+          <input type="date" name="inicio" data-cy="analise-inicio" required>
+        </label>
+        <label>Data de fim
+          <input type="date" name="fim" data-cy="analise-fim" required>
+        </label>
+        <button type="submit" class="btn-primary" data-cy="btn-consultar-analise">Consultar</button>
+      </div>
+      <fieldset class="analise-categorias">
+        <legend>Categorias</legend>
+        <div id="lista-categorias" data-cy="lista-categorias"></div>
+      </fieldset>
+    </form>
+
+    <div id="analise-resultado" class="analise-resultado" data-cy="analise-resultado" hidden>
+      <div class="analise-topo">
+        <ul id="analise-legenda" class="analise-legenda" data-cy="analise-legenda"></ul>
+        <span id="analise-tempo" class="hint" data-cy="analise-tempo-resposta"></span>
+      </div>
+      <div id="analise-grafico" class="analise-grafico" data-cy="analise-grafico"></div>
+      <p id="analise-vazio" class="hint" data-cy="analise-vazio" hidden>Nenhuma venda ENTREGUE dessas categorias no período.</p>
+      <details class="analise-tabela" data-cy="analise-detalhes-tabela">
+        <summary>Ver os valores em tabela</summary>
+        <table class="tabela-clientes" data-cy="tabela-analise">
+          <thead id="thead-analise"></thead>
+          <tbody id="tbody-analise"></tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
   <!-- ===================== AUDITORIA (RNF0012) ===================== -->
   <section id="tab-auditoria" class="tab-content" hidden>
     <h2>Log de auditoria</h2>
@@ -759,5 +809,6 @@
 <script src="js/cliente.js"></script>
 <script src="js/loja.js"></script>
 <script src="js/gestao-vendas.js"></script>
+<script src="js/analise-vendas.js"></script>
 </body>
 </html>

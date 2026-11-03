@@ -10,6 +10,7 @@ import com.games.vendas.domain.entity.ParametroSistema;
 import com.games.vendas.domain.enums.TipoCupom;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.time.LocalDate;
  * promocionais. Só insere o que ainda não existe, então é seguro a cada subida.
  */
 @Component
+@Order(1)
 public class CargaInicialDominio implements ApplicationRunner {
 
     private final ParametroSistemaRepository parametroRepository;

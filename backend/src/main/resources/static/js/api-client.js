@@ -7,9 +7,15 @@ function apiRequest(path, options = {}) {
   return apiRequestUrl(API_BASE + path, options);
 }
 
+// Perfil escolhido na barra superior (o sistema não tem login); a API o recebe no cabeçalho X-Perfil.
+function perfilAtual() {
+  const campo = document.getElementById("perfil-usuario");
+  return campo ? campo.value : "CLIENTE";
+}
+
 async function apiRequestUrl(url, options = {}) {
   const resp = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Perfil": perfilAtual() },
     ...options,
   });
 
@@ -113,6 +119,16 @@ const CupomApi = {
 const ParametroApi = {
   listar: () => apiRequestUrl("/api/parametros"),
   alterar: (chave, valor) => apiRequestUrl(`/api/parametros/${chave}`, json("PUT", { valor })),
+};
+
+// RF0055 / RNF0043 — análise do histórico de vendas por categoria (somente administrador)
+const AnaliseApi = {
+  categorias: () => apiRequestUrl("/api/analises/categorias"),
+  vendasPorCategoria: (inicio, fim, categorias) => {
+    const params = new URLSearchParams({ inicio, fim });
+    categorias.forEach((c) => params.append("categorias", c));
+    return apiRequestUrl(`/api/analises/vendas-por-categoria?${params}`);
+  },
 };
 
 // RNF0012 — log de auditoria (fora do prefixo /api/clientes)

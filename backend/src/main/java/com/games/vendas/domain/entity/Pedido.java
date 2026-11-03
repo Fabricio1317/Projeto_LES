@@ -19,7 +19,8 @@ import java.util.List;
         @UniqueConstraint(name = "uk_pedido_codigo", columnNames = "codigo")
 }, indexes = {
         @Index(name = "idx_pedido_cliente_id", columnList = "cliente_id"),
-        @Index(name = "idx_pedido_status", columnList = "status")
+        @Index(name = "idx_pedido_status", columnList = "status"),
+        @Index(name = "idx_pedido_status_data", columnList = "status, data_compra")
 })
 public class Pedido {
 
