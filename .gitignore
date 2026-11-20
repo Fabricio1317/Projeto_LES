@@ -19,3 +19,9 @@ backend/src/main/resources/application.properties
 # OS
 Thumbs.db
 .DS_Store
+
+# IA local (RNF0044): ambiente Python, modelos e treinos ficam só na máquina
+ia-local/.venv/
+ia-local/modelos/
+ia-local/treinamentos/
+ia-local/llama.cpp/

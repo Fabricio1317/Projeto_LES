@@ -2,6 +2,8 @@
 // RF0055 (busca por período comparando categorias), RNF0043 (gráfico de linhas) e RNF0011
 // (tempo de resposta), com os critérios da atividade: comparação entre categorias, acesso só do
 // administrador, eixo X por mês/ano, somente compras ENTREGUE e valor total em reais.
+// Também cobre, do DRS: RN0072 (período de 1 a 24 meses), RNF0045 (legenda na parte inferior do
+// gráfico).
 // Os blocos "Roteiro N" seguem o roteiro mínimo de demonstração. Os valores esperados são
 // calculados a partir das compras registradas na base (API de pedidos), e não fixos no teste.
 // A aplicação deve estar rodando em http://localhost:8080 (ver README).
@@ -233,7 +235,7 @@ describe("Análise de vendas por categoria — RF0055 / RNF0043 / RNF0011", () =
         }));
 
         abrirAnaliseComoAdministrador();
-        consultar(inicioDoMes(0), HOJE, [categoria]);
+        consultar(inicioDoMes(1), HOJE, [categoria]);
         cy.get(`[data-cy=ponto][data-categoria="${categoria}"][data-mes="${MES_ATUAL}"]`).should("have.attr", "data-valor", "0");
         cy.get("[data-cy=analise-vazio]").should("be.visible");
         cy.get(`[data-cy=legenda-item][data-categoria="${categoria}"]`).should("contain.text", "R$ 0,00");
@@ -250,7 +252,7 @@ describe("Análise de vendas por categoria — RF0055 / RNF0043 / RNF0011", () =
       const categoria = `Categoria Teste ${unico()}`;
       compraEmTransporte(categoria, 2).then((pedido) => {
         abrirAnaliseComoAdministrador();
-        consultar(inicioDoMes(0), HOJE, [categoria]);
+        consultar(inicioDoMes(1), HOJE, [categoria]);
         cy.get(`[data-cy=ponto][data-categoria="${categoria}"][data-mes="${MES_ATUAL}"]`).should("have.attr", "data-valor", "0");
 
         // o administrador confirma a entrega na Gestão de vendas
@@ -259,7 +261,7 @@ describe("Análise de vendas por categoria — RF0055 / RNF0043 / RNF0011", () =
 
         // 2 × R$ 100,00 = R$ 200,00 no mês atual
         cy.get("[data-cy=nav-analise]").click();
-        consultar(inicioDoMes(0), HOJE, [categoria]);
+        consultar(inicioDoMes(1), HOJE, [categoria]);
         cy.get(`[data-cy=ponto][data-categoria="${categoria}"][data-mes="${MES_ATUAL}"]`)
           .should(($p) => expect(centavos($p.attr("data-valor"))).to.eq(20000));
         cy.get(`[data-cy=legenda-item][data-categoria="${categoria}"]`).should("contain.text", "R$ 200,00");
@@ -322,6 +324,59 @@ describe("Análise de vendas por categoria — RF0055 / RNF0043 / RNF0011", () =
         consultar(inicioAno, HOJE, categorias.slice(0, 4));
         cy.get("[data-cy=analise-tempo-resposta]").should("contain.text", "Consulta respondida em")
           .invoke("attr", "data-ms").then((ms) => expect(Number(ms)).to.be.lessThan(1000));
+      });
+    });
+  });
+
+  // =====================================================================
+  // RN0072 — Período mínimo e máximo
+  // =====================================================================
+  describe("RN0072 — Período mínimo e máximo da consulta", () => {
+
+    it("RN0072 — aceita períodos de 1 a 24 meses e recusa os menores e os maiores", () => {
+      abrirAnaliseComoAdministrador();
+
+      // menos de 1 mês
+      enviarConsulta("2026-03-01", "2026-03-30", ["RPG"]);
+      cy.get("[data-cy=mensagem]").should("have.class", "erro").and("contain.text", "RN0072").and("contain.text", "no mínimo 1 mês");
+      cy.get("[data-cy=analise-resultado]").should("not.be.visible");
+
+      // exatamente 1 mês: um ponto no eixo X
+      consultar("2026-03-01", "2026-03-31", ["RPG"]);
+      cy.get("[data-cy=eixo-x-rotulo]").should("have.length", 1).and("have.text", "03/2026");
+
+      // exatamente 24 meses
+      consultar("2024-01-01", "2025-12-31", ["RPG"]);
+      cy.get("[data-cy=eixo-x-rotulo]").should("have.length", 24);
+
+      // mais de 24 meses
+      enviarConsulta("2024-01-01", "2026-01-01", ["RPG"]);
+      cy.get("[data-cy=mensagem]").should("have.class", "erro").and("contain.text", "RN0072").and("contain.text", "no máximo 24 meses");
+      cy.get("[data-cy=analise-resultado]").should("not.be.visible");
+    });
+  });
+
+  // =====================================================================
+  // RNF0045 — Legenda na parte inferior do gráfico
+  // =====================================================================
+  describe("RNF0045 — Legenda do gráfico", () => {
+
+    it("RNF0045 — a legenda fica na parte inferior do gráfico, com a cor de cada categoria", () => {
+      const categorias = ["Ação", "RPG"];
+      abrirAnaliseComoAdministrador();
+      consultar(INICIO, HOJE, categorias);
+
+      cy.get("[data-cy=grafico-linhas]").then(($svg) => {
+        const baseDoGrafico = $svg[0].getBoundingClientRect().bottom;
+        cy.get("[data-cy=analise-legenda]").should("be.visible")
+          .should(($legenda) => expect($legenda[0].getBoundingClientRect().top, "topo da legenda").to.be.at.least(baseDoGrafico));
+      });
+
+      // cada item da legenda tem a cor da linha da sua categoria
+      categorias.forEach((c) => {
+        cy.get(`[data-cy=linha-categoria][data-categoria="${c}"] polyline`).invoke("css", "stroke").then((cor) => {
+          cy.get(`[data-cy=legenda-item][data-categoria="${c}"] .amostra-cor`).should("have.css", "background-color", cor);
+        });
       });
     });
   });

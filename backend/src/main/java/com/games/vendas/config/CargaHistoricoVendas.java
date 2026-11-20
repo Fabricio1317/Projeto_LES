@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 /**
  * Massa de dados da análise de vendas (RF0055): compras de várias categorias, distribuídas pelos
- * últimos seis meses e pelo mês atual, em status distintos (ENTREGUE, EM TRANSPORTE, APROVADA,
+ * últimos doze meses e pelo mês atual, em status distintos (ENTREGUE, EM TRANSPORTE, APROVADA,
  * REPROVADA e TROCADO). As datas são relativas ao dia da subida, então o gráfico sempre tem histórico.
  * Só é carregada com o banco sem compras.
  */
@@ -65,6 +65,26 @@ public class CargaHistoricoVendas implements ApplicationRunner {
                 "Casa", "Rua", "Rua dos Jogadores", "42", "Centro", "01310100", "São Paulo", "SP", "Brasil"));
 
         // meses atrás, dia, status e itens ("categoria:quantidade")
+        // de 12 a 7 meses atrás (subindo em nov/2026: de nov/2025 a abr/2026), para um ano inteiro de histórico
+        compra(cliente, 12, 7, StatusPedido.ENTREGUE, "RPG:2", "Esporte:1");
+        compra(cliente, 12, 18, StatusPedido.ENTREGUE, "Ação:1", "Corrida:1");
+        compra(cliente, 12, 26, StatusPedido.REPROVADA, "Aventura:1");
+        compra(cliente, 11, 4, StatusPedido.ENTREGUE, "Aventura:2", "Plataforma:1");
+        compra(cliente, 11, 15, StatusPedido.ENTREGUE, "RPG:1", "Sandbox:1");
+        compra(cliente, 11, 22, StatusPedido.ENTREGUE, "Ação:3");
+        compra(cliente, 10, 9, StatusPedido.ENTREGUE, "Esporte:2");
+        compra(cliente, 10, 17, StatusPedido.TROCADO, "RPG:1");
+        compra(cliente, 10, 24, StatusPedido.ENTREGUE, "Corrida:1", "Aventura:1");
+        compra(cliente, 9, 6, StatusPedido.ENTREGUE, "RPG:1", "Ação:1");
+        compra(cliente, 9, 14, StatusPedido.REPROVADA, "Esporte:1");
+        compra(cliente, 9, 21, StatusPedido.ENTREGUE, "Sandbox:2");
+        compra(cliente, 8, 3, StatusPedido.ENTREGUE, "Plataforma:1", "Esporte:1");
+        compra(cliente, 8, 12, StatusPedido.ENTREGUE, "RPG:2");
+        compra(cliente, 8, 25, StatusPedido.TROCADO, "Aventura:1");
+        compra(cliente, 7, 5, StatusPedido.ENTREGUE, "Ação:1", "Aventura:1");
+        compra(cliente, 7, 16, StatusPedido.ENTREGUE, "Corrida:2");
+        compra(cliente, 7, 27, StatusPedido.ENTREGUE, "RPG:1", "Esporte:1");
+
         compra(cliente, 6, 8, StatusPedido.ENTREGUE, "RPG:1", "Ação:1");
         compra(cliente, 6, 19, StatusPedido.ENTREGUE, "Esporte:2");
         compra(cliente, 6, 25, StatusPedido.REPROVADA, "RPG:2");

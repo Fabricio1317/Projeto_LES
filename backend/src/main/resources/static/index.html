@@ -26,6 +26,8 @@
     <button class="tab-btn" data-tab="tab-vendas" data-cy="nav-vendas">Gestão de vendas</button>
     <button class="tab-btn" data-tab="tab-auditoria" data-cy="nav-auditoria">Auditoria</button>
     <button class="tab-btn" data-tab="tab-analise" data-cy="nav-analise" hidden>Análise de vendas</button>
+    <button class="tab-btn" data-tab="tab-assistente" data-cy="nav-assistente">Assistente IA</button>
+    <button class="tab-btn" data-tab="tab-ia" data-cy="nav-ia" hidden>IA — Treinamento</button>
   </nav>
   <!-- Sem login no sistema: o perfil escolhido aqui é enviado à API no cabeçalho X-Perfil -->
   <label class="perfil-usuario">Perfil
@@ -483,7 +485,7 @@
   <!-- ===================== ANÁLISE DE VENDAS (RF0055 / RNF0043) — administrador ===================== -->
   <section id="tab-analise" class="tab-content" hidden>
     <h2>Análise de vendas por categoria</h2>
-    <p class="hint">Valor total vendido (preço × quantidade dos itens) em compras <strong>ENTREGUE</strong>, agrupado pelo mês da compra. Compare até 8 categorias.</p>
+    <p class="hint">Valor total vendido (preço × quantidade dos itens) em compras <strong>ENTREGUE</strong>, agrupado pelo mês da compra. Compare até 8 categorias em um período de 1 a 24 meses.</p>
 
     <div id="analise-acesso-negado" class="mensagem erro" data-cy="analise-acesso-negado" hidden>
       Acesso restrito ao perfil administrador.
@@ -507,10 +509,11 @@
 
     <div id="analise-resultado" class="analise-resultado" data-cy="analise-resultado" hidden>
       <div class="analise-topo">
-        <ul id="analise-legenda" class="analise-legenda" data-cy="analise-legenda"></ul>
         <span id="analise-tempo" class="hint" data-cy="analise-tempo-resposta"></span>
       </div>
       <div id="analise-grafico" class="analise-grafico" data-cy="analise-grafico"></div>
+      <!-- RNF0045 — legenda na parte inferior do gráfico -->
+      <ul id="analise-legenda" class="analise-legenda" data-cy="analise-legenda"></ul>
       <p id="analise-vazio" class="hint" data-cy="analise-vazio" hidden>Nenhuma venda ENTREGUE dessas categorias no período.</p>
       <details class="analise-tabela" data-cy="analise-detalhes-tabela">
         <summary>Ver os valores em tabela</summary>
@@ -519,6 +522,130 @@
           <tbody id="tbody-analise"></tbody>
         </table>
       </details>
+    </div>
+  </section>
+
+  <!-- ===================== ASSISTENTE IA (RNF0044) — perfil cliente ===================== -->
+  <section id="tab-assistente" class="tab-content" hidden>
+    <h2>Assistente de jogos</h2>
+    <p class="hint">Converse com a IA da Nexus: ela recomenda jogos com base nas suas compras e preferências, ajuda a encontrar jogos no catálogo e tira dúvidas. Avalie cada resposta como útil ou não útil: o seu feedback treina o modelo.</p>
+
+    <div id="assist-acesso-negado" class="mensagem erro" data-cy="assist-acesso-negado" hidden>
+      O assistente é usado pelo perfil cliente.
+    </div>
+
+    <div id="assist-filtros" class="filtros">
+      <label>Cliente
+        <select id="assist-cliente" data-cy="assist-cliente">
+          <option value="">Selecione o cliente</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="assist-conteudo" class="assist-layout" data-cy="assist-conteudo" hidden>
+      <div class="assist-chat">
+        <div class="assist-topo">
+          <span class="assist-modelo">Modelo em uso: <strong id="assist-modelo" data-cy="assist-modelo">—</strong></span>
+          <button type="button" id="btn-nova-conversa" class="btn-secondary btn-sm" data-cy="btn-nova-conversa">Nova conversa</button>
+        </div>
+        <div id="assist-aviso-ia" class="mensagem aviso" data-cy="assist-aviso-ia" hidden></div>
+        <div id="assist-mensagens" class="assist-mensagens" data-cy="assist-mensagens" aria-live="polite"></div>
+        <div class="assist-sugestoes" data-cy="assist-sugestoes">
+          <button type="button" class="chip-sugestao" data-cy="assist-sugestao">Me recomenda um jogo?</button>
+          <button type="button" class="chip-sugestao" data-cy="assist-sugestao">Quais jogos de corrida vocês têm?</button>
+          <button type="button" class="chip-sugestao" data-cy="assist-sugestao">Tem algo até R$ 150?</button>
+          <button type="button" class="chip-sugestao" data-cy="assist-sugestao">Quero um jogo em que eu possa criar as coisas e ter bastante liberdade</button>
+        </div>
+        <form id="form-assistente" class="assist-entrada" data-cy="form-assistente">
+          <textarea name="mensagem" rows="2" maxlength="1000" placeholder="Pergunte sobre jogos, peça uma recomendação…" data-cy="assist-entrada" required></textarea>
+          <button type="submit" class="btn-primary" data-cy="btn-enviar-assistente">Enviar</button>
+        </form>
+      </div>
+
+      <aside class="assist-lateral">
+        <!-- Critério "e": preferências declaradas pelo próprio cliente no perfil -->
+        <form id="form-preferencias" class="assist-preferencias" data-cy="form-preferencias" novalidate>
+          <h3>Minhas preferências</h3>
+          <fieldset>
+            <legend>Gêneros favoritos</legend>
+            <div id="pref-generos" class="pref-opcoes" data-cy="pref-generos"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Plataformas que eu jogo</legend>
+            <div id="pref-plataformas" class="pref-opcoes" data-cy="pref-plataformas"></div>
+          </fieldset>
+          <label>Orçamento por jogo (R$)
+            <input type="number" name="orcamentoMaximo" min="1" step="0.01" placeholder="Sem limite" data-cy="pref-orcamento">
+          </label>
+          <label>Observações
+            <textarea name="observacoes" rows="2" maxlength="500" placeholder="Ex.: gosto de jogar online com amigos" data-cy="pref-observacoes"></textarea>
+          </label>
+          <button type="submit" class="btn-primary btn-sm" data-cy="btn-salvar-preferencias">Salvar preferências</button>
+        </form>
+
+        <div class="assist-avaliacoes">
+          <h3>Meu feedback registrado</h3>
+          <ul id="assist-lista-avaliacoes" data-cy="assist-lista-avaliacoes"></ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===================== IA — TREINAMENTO (RNF0044, item 3) — administrador ===================== -->
+  <section id="tab-ia" class="tab-content" hidden>
+    <h2>IA generativa — treinamento</h2>
+    <p class="hint">Ajuste fino do modelo com os dados de vendas e o feedback do chat. Um novo ajuste começa sozinho quando entram dados novos suficientes.</p>
+
+    <div id="ia-acesso-negado" class="mensagem erro" data-cy="ia-acesso-negado" hidden>
+      Acesso restrito ao perfil administrador.
+    </div>
+
+    <div id="ia-conteudo" data-cy="ia-conteudo" hidden>
+      <div class="ia-cards">
+        <div class="ia-card"><span>Provedor</span><strong id="ia-provedor" data-cy="ia-provedor">—</strong></div>
+        <div class="ia-card"><span>Modelo em uso no chat</span><strong id="ia-modelo-em-uso" data-cy="ia-modelo-em-uso">—</strong></div>
+        <div class="ia-card"><span>Vendas efetivadas</span><strong id="ia-vendas" data-cy="ia-vendas">—</strong></div>
+        <div class="ia-card"><span>Feedback útil / não útil</span><strong id="ia-feedback" data-cy="ia-feedback">—</strong></div>
+        <div class="ia-card"><span>Dados novos desde o último treino</span><strong id="ia-novos-dados" data-cy="ia-novos-dados">—</strong></div>
+      </div>
+      <div id="ia-aviso" class="mensagem aviso" data-cy="ia-aviso" hidden></div>
+
+      <div class="ia-acoes">
+        <button type="button" id="btn-treinar" class="btn-primary" data-cy="btn-treinar">Treinar agora</button>
+        <button type="button" id="btn-baixar-dataset" class="btn-secondary" data-cy="btn-baixar-dataset">Baixar dataset (JSONL)</button>
+        <button type="button" id="btn-atualizar-ia" class="btn-secondary" data-cy="btn-atualizar-ia">Atualizar</button>
+      </div>
+
+      <h3>Como o treinamento funciona</h3>
+      <ol class="ia-procedimento" data-cy="ia-procedimento">
+        <li><strong>Dados de vendas:</strong> para cada cliente com compras efetivadas, o sistema gera conversas-exemplo em que o assistente recomenda os jogos que combinam com as preferências, o histórico e o que outros clientes compraram junto ("quem comprou X também levou Y"), além de buscas por gênero, por orçamento e detalhes de um jogo.</li>
+        <li><strong>Feedback:</strong> respostas reais do chat avaliadas como <em>úteis</em> entram como exemplos; as <em>não úteis</em> ficam de fora e tiram pontos dos jogos que sugeriram.</li>
+        <li><strong>Ajuste fino:</strong> o sistema treina um adaptador LoRA sobre o Qwen2.5 com o dataset (JSONL), na própria máquina (Python + PyTorch), mescla no modelo e importa no Ollama como uma nova versão. O modelo ajustado passa a responder no chat; o anterior continua respondendo enquanto o novo treina.</li>
+        <li><strong>Personalização contínua:</strong> cada compra efetivada e cada avaliação nova conta como dado novo; ao atingir o limite, um novo ajuste fino começa sozinho com todos os dados acumulados.</li>
+      </ol>
+
+      <h3>Dataset atual</h3>
+      <p class="resumo-valores" data-cy="ia-resumo-dataset" id="ia-resumo-dataset"></p>
+      <details class="ia-amostra">
+        <summary>Ver exemplos do dataset</summary>
+        <pre id="ia-amostra-dataset" data-cy="ia-amostra-dataset"></pre>
+      </details>
+
+      <h3>Histórico de ajustes finos</h3>
+      <table class="tabela-clientes" data-cy="tabela-treinamentos">
+        <thead>
+          <tr><th>Versão</th><th>Status</th><th>Motivo</th><th>Exemplos (vendas + feedback)</th><th>Início</th><th>Fim</th><th>Modelo / erro</th></tr>
+        </thead>
+        <tbody id="tbody-treinamentos"></tbody>
+      </table>
+
+      <h3>Feedback registrado no chat</h3>
+      <table class="tabela-clientes" data-cy="tabela-feedbacks">
+        <thead>
+          <tr><th>Data</th><th>Cliente</th><th>Pergunta</th><th>Avaliação</th><th>Modelo que respondeu</th></tr>
+        </thead>
+        <tbody id="tbody-feedbacks"></tbody>
+      </table>
     </div>
   </section>
 
@@ -810,5 +937,6 @@
 <script src="js/loja.js"></script>
 <script src="js/gestao-vendas.js"></script>
 <script src="js/analise-vendas.js"></script>
+<script src="js/assistente-ia.js"></script>
 </body>
 </html>

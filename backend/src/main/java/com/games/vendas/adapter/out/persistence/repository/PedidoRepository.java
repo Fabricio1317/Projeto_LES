@@ -21,6 +21,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     List<Pedido> findByClienteIdAndStatusIn(Long clienteId, Collection<StatusPedido> status);
 
+    /** RNF0044 — compras efetivadas de todos os clientes: base das recomendações e do ajuste fino. */
+    List<Pedido> findByStatusIn(Collection<StatusPedido> status);
+
+    long countByStatusIn(Collection<StatusPedido> status);
+
     /** Compras aguardando a validação automática do pagamento (RN0037). */
     List<Pedido> findByStatusAndDataCompraBeforeOrderByIdAsc(StatusPedido status, LocalDateTime limite);
 

@@ -56,6 +56,10 @@ public class Jogo {
     @Column(nullable = false)
     private boolean ativo = true;
 
+    /** RNF0044 — o que o jogo oferece (ex.: "construir e criar, liberdade total"), usado pelo assistente. */
+    @Column(length = 300)
+    private String caracteristicas;
+
     protected Jogo() {}
 
     public Jogo(String titulo, String plataforma, String genero, String desenvolvedora, String distribuidora,
@@ -91,6 +95,12 @@ public class Jogo {
     public void ajustarEstoque(int novoEstoque) {
         this.estoque = novoEstoque;
     }
+
+    public void definirCaracteristicas(String caracteristicas) {
+        this.caracteristicas = caracteristicas;
+    }
+
+    public String getCaracteristicas() { return caracteristicas; }
 
     public Long getId() { return id; }
     public String getTitulo() { return titulo; }

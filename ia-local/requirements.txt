@@ -1,0 +1,8 @@
+# Ajuste fino local (RNF0044). O torch vem do índice só-CPU:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+transformers>=4.45,<5
+peft>=0.13
+accelerate
+safetensors
+huggingface_hub

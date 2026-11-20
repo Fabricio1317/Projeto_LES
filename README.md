@@ -55,13 +55,31 @@ nexus-crud/
 │           │   └── out/persistence/
 │           │       └── repository/             # repositórios Spring Data JPA
 │           └── config/                         # CargaInicialDominio (RNF0013), CargaHistoricoVendas (massa de dados da análise), WebConfig
+│       └── recomendacao/                       # assistente de recomendação com IA generativa (RNF0044)
+│           ├── domain/
+│           │   ├── entity/                     # PreferenciaCliente, MensagemAssistente, TreinamentoModelo
+│           │   └── enums/                      # AvaliacaoResposta, StatusTreinamento
+│           ├── application/
+│           │   ├── service/                    # AssistenteService, PreferenciaService, PerfilRecomendacaoService, RedacaoRespostas, DatasetTreinamentoService, TreinamentoService
+│           │   └── gateway/                    # IaGenerativa (porta: conversa, dataset e ajuste fino)
+│           ├── adapter/
+│           │   ├── in/web/
+│           │   │   ├── controller/             # AssistenteController (cliente), TreinamentoIaController (administrador)
+│           │   │   ├── interceptor/            # PerfilClienteInterceptor (o chat é do perfil cliente)
+│           │   │   └── dto/request/ e dto/response/
+│           │   └── out/
+│           │       ├── ia/                     # OllamaLocal (padrão, gratuito) e VertexAiGemini + CredencialGoogle (alternativa paga)
+│           │       └── persistence/repository/
+│           └── config/                         # CargaAssistente (massa de dados), RecomendacaoWebConfig
 │       resources/                              # application.properties, static/ (frontend)
 │       test/java/.../application/service/      # testes unitários (JUnit + Mockito) do ClienteService
+├── ia-local/                    # IA local: treinar_lora.py (ajuste fino LoRA), baixar_modelo.py, requirements.txt
 ├── cypress/
 │   ├── e2e/cliente-crud.cy.js          # suíte do módulo de clientes (37 testes)
 │   ├── e2e/pedido-caminho-feliz.cy.js  # criação de pedido — suíte da fase anterior (23 testes)
 │   ├── e2e/venda-ponta-a-ponta.cy.js   # venda do carrinho ao fechamento da troca — roteiro mínimo 1–11 (27 testes)
-│   ├── e2e/analise-vendas.cy.js        # análise de vendas por categoria — roteiro mínimo 1–8 (9 testes)
+│   ├── e2e/analise-vendas.cy.js        # análise de vendas por categoria — roteiro mínimo 1–8 (11 testes)
+│   ├── e2e/assistente-ia.cy.js         # chatbot de recomendação com IA (RNF0044)
 │   └── support/                        # cpf-generator.js e vendas-helpers.js (pré-condições e ações comuns)
 ├── cypress.config.js
 └── package.json
@@ -92,7 +110,8 @@ npm install
 npx cypress open     # modo interativo, bom para a apresentação ao vivo
 # ou
 npx cypress run      # modo headless, roda todas as suítes
-npx cypress run --spec cypress/e2e/analise-vendas.cy.js         # só a análise de vendas (apresentação)
+npx cypress run --spec cypress/e2e/assistente-ia.cy.js          # só o assistente com IA (apresentação)
+npx cypress run --spec cypress/e2e/analise-vendas.cy.js         # só a análise de vendas
 npx cypress run --spec cypress/e2e/venda-ponta-a-ponta.cy.js    # só a venda de ponta a ponta
 npx cypress run --spec cypress/e2e/pedido-caminho-feliz.cy.js   # só a criação de pedido (fase anterior)
 ```
@@ -332,6 +351,17 @@ comparando categorias de produtos em um gráfico de linhas.
 | 7. Acesso do administrador permitido, dos outros perfis negado | "o gráfico é acessível ao administrador e negado a outros perfis" |
 | 8. Tempo de resposta de até 1 segundo | "a consulta do histórico responde em no máximo 1 segundo" |
 
+### Outros requisitos do DRS atendidos
+
+| Requisito | Como está implementado | Teste Cypress |
+|---|---|---|
+| RN0072 Período mínimo e máximo | O período vai de **1 a 24 meses**, contando a data de fim: 01/03 a 31/03 é um mês; 01/01/2024 a 31/12/2025, 24 meses. Fora disso, **422** com o código `RN0072`. | "aceita períodos de 1 a 24 meses e recusa os menores e os maiores" |
+| RNF0045 Legenda | A legenda (cor, categoria e total) fica **abaixo** do gráfico. | "a legenda fica na parte inferior do gráfico, com a cor de cada categoria" |
+
+Ficaram de fora, por decisão da atividade: o RN0074 do DRS (contar APROVADA,
+EM TRANSPORTE e ENTREGUE), porque o critério (d) pede **somente ENTREGUE**, e o
+RF0058 (exportar em planilha), porque a exportação de dados está no "Fora do escopo".
+
 Os valores esperados nos roteiros 1, 2 e 4 não são fixos no teste: são
 calculados a partir das compras ENTREGUE que a API de pedidos devolve, e
 comparados mês a mês com o gráfico e com a tabela. Os roteiros 5 e 6 criam
@@ -341,8 +371,8 @@ compras.
 ### Massa de dados
 
 Na subida com o banco vazio, a `CargaHistoricoVendas` cadastra a cliente
-"Cliente Histórico de Vendas" e 21 compras de 7 categorias, espalhadas pelos
-últimos seis meses e pelo mês atual, nos status ENTREGUE, EM TRANSPORTE,
+"Cliente Histórico de Vendas" e 39 compras de 7 categorias, espalhadas pelos
+últimos doze meses e pelo mês atual (subindo em novembro de 2026: de novembro de 2025 a novembro de 2026), nos status ENTREGUE, EM TRANSPORTE,
 APROVADA, REPROVADA e TROCADO. As datas são relativas ao dia da subida, então
 o gráfico sempre tem histórico.
 
@@ -354,7 +384,8 @@ o gráfico sempre tem histórico.
 | `GET /api/analises/vendas-por-categoria?inicio=2026-04-01&fim=2026-10-31&categorias=RPG&categorias=Ação` | Histórico do período: os meses (eixo X) e, por categoria, o valor de cada mês e o total |
 
 Período inválido (início depois do fim, data faltando) ou nenhuma categoria
-selecionada devolvem **422** com o código `RF0055`.
+selecionada devolvem **422** com o código `RF0055`. Período menor que 1 mês ou
+maior que 24 meses devolve **422** com o código `RN0072`.
 
 ### Desempenho (RNF0011)
 
@@ -362,6 +393,234 @@ A soma é feita no banco, em uma única consulta agrupada por categoria e mês
 (índice em `status, data_compra` do pedido). A tela mostra o tempo de cada
 consulta ("Consulta respondida em X ms"), e o teste do roteiro 8 confere o
 limite de 1 segundo.
+
+## Assistente de recomendação com IA generativa (`assistente-ia.cy.js`)
+
+Chatbot do perfil cliente (aba **Assistente IA**) que recomenda jogos de forma
+personalizada, ajuda a procurar no catálogo, responde dúvidas e sugere
+conteúdos relevantes (RNF0044). Cada resposta pode ser avaliada como **útil**
+ou **não útil**, e esse feedback, junto com as vendas, treina o modelo por
+**ajuste fino** (aba **IA — Treinamento**, perfil administrador).
+
+### Escolha da IA generativa: Qwen2.5 1.5B Instruct, rodando local no Ollama
+
+O critério (c) exige treinamento ou ajuste fino de verdade: não basta mandar os
+dados como contexto. Também era requisito do grupo não pagar nada. Situação dos
+serviços em nuvem em novembro de 2026:
+
+| Provedor | Situação do ajuste fino |
+|---|---|
+| OpenAI | Não aceita mais novos usuários no ajuste fino |
+| Fireworks AI | Ajuste fino gerenciado não aceita novos jobs |
+| Mistral | Ajuste fino marcado como descontinuado |
+| Together AI | Pago; o modelo ajustado só roda em servidor dedicado, cobrado por hora |
+| Anthropic (Claude) | A API não oferece ajuste fino |
+| Google Vertex AI (Gemini) | Disponível, mas pago (pede cartão) |
+
+Por isso a escolha foi um **modelo aberto rodando na própria máquina**:
+- **Modelo:** Qwen2.5 1.5B Instruct, da Alibaba, com licença Apache 2.0. É um
+  modelo multilíngue que responde bem em português e é pequeno o bastante para
+  treinar numa CPU comum.
+- **Conversa:** o **Ollama** roda o modelo na placa de vídeo, e a resposta sai
+  em poucos segundos.
+- **Treinamento:** ajuste fino **LoRA** em Python (PyTorch + Hugging Face PEFT),
+  na CPU, disparado pelo próprio sistema. O modelo treinado vira uma nova versão
+  no Ollama.
+- **Vantagens:** é de graça, funciona sem internet, os dados de vendas e de
+  feedback não saem da máquina (LGPD), e o ajuste fino é real, com os pesos do
+  modelo alterados.
+- **Limitação:** é um modelo pequeno, então as respostas são mais simples que
+  as de um modelo grande em nuvem.
+
+O provedor fica isolado atrás da porta `IaGenerativa`. O adaptador `OllamaLocal`
+é o padrão. O `VertexAiGemini` (Google, pago) continua no projeto como
+alternativa e é ativado com `nexus.ia.provedor=vertex`. Trocar de provedor não
+mexe nos serviços.
+
+### Preferências do cliente (critério e)
+
+O DRS não define como obter as preferências, então elas são **declaradas pelo
+próprio cliente**, no painel "Minhas preferências" da aba do assistente:
+- **O que o cliente informa:** gêneros favoritos, plataformas que joga,
+  orçamento por jogo e observações livres (ex.: "jogo com meus filhos").
+- **Por que perguntar:** é o jeito mais direto e transparente. Também resolve o
+  cliente novo, que ainda não tem compras ("partida a frio"), e o cliente pode
+  mudar quando quiser.
+- **O que mais entra no perfil:** o histórico de compras efetivadas e o feedback
+  do chat. Os jogos sugeridos em respostas "não úteis" perdem pontos.
+
+### Como a personalização e o treinamento funcionam
+
+1. **Perfil do cliente** (`PerfilRecomendacaoService`): compras efetivadas
+   (APROVADA, EM TRANSPORTE, ENTREGUE), preferências declaradas e feedback.
+2. **Pontuação de cada jogo** para o cliente:
+   - gênero e plataforma preferidos;
+   - gêneros e plataformas que ele já comprou;
+   - "quem comprou X também levou Y", calculado sobre as vendas de todos os clientes;
+   - orçamento e classificação indicativa;
+   - penalidade para jogos de respostas marcadas como não úteis.
+3. **Dataset do ajuste fino** (`DatasetTreinamentoService`, JSONL):
+   - **Vendas:** para cada cliente com compras, conversas-exemplo em que o
+     assistente:
+     - recomenda os jogos de maior pontuação e explica o motivo (2 formas de
+       pedido por cliente, 6 no total, e uma conversa de duas voltas);
+     - busca por gênero e por orçamento;
+     - indica jogos parecidos com o último que o cliente comprou;
+     - tira uma dúvida sobre um jogo;
+     - atende pedidos por estilo, ditos de jeitos diferentes (3 por cliente),
+       ligando o que o cliente descreve às características dos jogos. Ex.:
+       "quero um jogo em que eu possa criar as coisas e ter bastante liberdade",
+       "algo para relaxar depois do trabalho", "jogo para jogar com amigos no
+       sofá", "quero sentir medo". São 10 estilos (`EstilosDeJogo`);
+     - recusa com educação assuntos fora de jogos (3 por cliente).
+   - **Feedback:** cada resposta real avaliada como **útil** vira exemplo. As
+     **não úteis** ficam de fora.
+   - **Instrução de sistema:** cada linha leva a mesma instrução usada no chat
+     (papel, regras, catálogo, o perfil daquele cliente e as sugestões da
+     pontuação).
+   - **Blocos do pedido:** quando a mensagem descreve um estilo ("quero
+     construir do meu jeito") ou um valor ("tem algo até R$ 150?"), o backend
+     acrescenta à instrução os jogos do catálogo com aquelas características
+     ou dentro daquele valor, já filtrados pelo perfil (`EstilosDeJogo.blocoDoPedido`
+     e `PerfilRecomendacaoService.blocoOrcamento`). É o mesmo bloco no chat e
+     nos exemplos do treino, então o modelo aprende a recomendar a partir dele.
+     Um modelo de 1,5B não cruza bem sozinho a frase do cliente com as 37
+     linhas do catálogo.
+4. **Ajuste fino** (`TreinamentoService` → `OllamaLocal` → `ia-local/treinar_lora.py`):
+   - **Treino:** adaptador LoRA (rank 16) nas 8 últimas camadas do Qwen2.5, por
+     2 épocas. A perda é calculada só nas falas do assistente.
+   - **Publicação:** o adaptador é mesclado no modelo, convertido para GGUF (q8_0)
+     com o conversor do llama.cpp e importado no Ollama como
+     `nexus-recomendador-vN`.
+   - **Duração:** cerca de 2h30 na CPU com o dataset atual (o catálogo com
+     características deixa cada exemplo com cerca de 2.700 tokens). O andamento (época, porcentagem,
+     perda e tempo restante) aparece na aba de treinamento.
+   - **Troca de modelo:** quando termina, o modelo novo responde no chat. O
+     anterior continua respondendo enquanto o novo treina.
+   - **Depois de reiniciar:** o banco é recriado a cada subida, mas o sistema
+     reencontra o último modelo treinado no Ollama e volta a usá-lo.
+5. **Personalização contínua:** cada compra efetivada e cada avaliação nova
+   conta como dado novo. Com **10** dados novos, um ajuste fino começa sozinho,
+   com todos os dados acumulados. O administrador também pode clicar em
+   **Treinar agora**.
+
+### Massa de dados
+
+A `CargaAssistente` cadastra seis clientes, cada um com compras entregues, preferências no perfil e
+seis conversas avaliadas (quatro úteis e duas não úteis):
+
+| Cliente | Perfil |
+|---|---|
+| Ana Souza | RPG e aventura, PC e PlayStation 5, orçamento de R$ 250 |
+| Bruno Lima | Esporte e corrida, PlayStation 5 e Xbox |
+| Carla Mendes | Plataforma e sandbox no Switch, joga com os filhos |
+| Diego Rocha | Ação no PlayStation 5 |
+| Elisa Martins | Indies de plataforma e sandbox no PC, orçamento de R$ 100 |
+| Felipe Alves | Corrida e ação no Xbox |
+
+Com a massa de dados mais as vendas do histórico, o dataset tem **115
+exemplos**: 91 das vendas e 24 do feedback útil.
+
+O catálogo inicial tem **37 jogos** em 13 gêneros: os 8 originais, 14 para
+dar opções às recomendações e 15 de estilos variados (criação, simulação,
+estratégia, terror, puzzle, cooperativo, luta, tiro). Cada jogo tem
+**características** (ex.: Minecraft: "construir e criar o que quiser,
+liberdade total, sobrevivência, multijogador"). A IA as vê no catálogo e as
+usa para responder pedidos por estilo.
+
+### Instalar a IA local (uma vez por máquina)
+
+Tudo é gratuito. A pasta `ia-local/` traz os scripts. O ambiente Python, os
+modelos e os treinos ficam fora do git.
+
+1. Instale o **Ollama** e o **Python 3.12**:
+   ```bash
+   winget install --id Ollama.Ollama -e
+   ```
+   ```bash
+   winget install --id Python.Python.3.12 -e --scope user
+   ```
+2. Baixe o modelo do chat no Ollama:
+   ```bash
+   ollama pull qwen2.5:1.5b
+   ```
+3. Crie o ambiente de treino e baixe o modelo base de treino (cerca de 3 GB), na
+   pasta `ia-local`:
+   ```bash
+   py -3.12 -m venv .venv
+   ```
+   ```bash
+   .venv\Scripts\pip install torch --index-url https://download.pytorch.org/whl/cpu
+   ```
+   ```bash
+   .venv\Scripts\pip install -r requirements.txt sentencepiece "git+https://github.com/ggml-org/llama.cpp#subdirectory=gguf-py"
+   ```
+   ```bash
+   .venv\Scripts\python baixar_modelo.py
+   ```
+4. Baixe só o conversor do llama.cpp, na pasta `ia-local`:
+   ```bash
+   git clone --depth 1 --filter=blob:none --sparse https://github.com/ggml-org/llama.cpp llama.cpp
+   ```
+   ```bash
+   git -C llama.cpp sparse-checkout set conversion gguf-py
+   ```
+5. Suba a aplicação. Na aba **IA — Treinamento** (perfil Administrador), clique
+   em **Treinar agora**.
+
+Opcionais, por variável de ambiente ou `application.properties`:
+- `nexus.ia.epocas` (padrão 2);
+- `nexus.ia.retreino.novos-dados` (padrão 10);
+- `nexus.ia.retreino.automatico` (padrão `true`);
+- `nexus.ia.local.modelo-base` (padrão `qwen2.5:1.5b`);
+- `nexus.ia.local.pasta` (padrão: a pasta `ia-local` do projeto).
+
+> Antes da apresentação, deixe o Ollama aberto e rode um treino com
+> antecedência. Depois de concluído, o modelo treinado continua em uso mesmo
+> se a aplicação reiniciar. Não rode os testes Cypress antes de mostrar, porque
+> eles criam clientes e jogos de teste que aparecem no catálogo.
+
+### Roteiro da apresentação → onde mostrar
+
+| Roteiro | Onde |
+|---|---|
+| 1. Integração com a IA e justificativa | Aba **IA — Treinamento**: o card do provedor e o modelo em uso. A justificativa está na seção acima. |
+| 2. Recomendação personalizada | **Assistente IA** como Ana Souza: "Me recomenda um jogo?". |
+| 3. Dois clientes, recomendações diferentes | A mesma pergunta como Bruno Lima. |
+| 4. Ajuda na busca | "Quais jogos de corrida vocês têm?", "Tem algo até R$ 150?" |
+| 5. Dúvidas sobre jogos | Perguntas livres do professor, ex.: "O Elden Ring é difícil?" |
+| 6. Conteúdos relevantes | "O que mais combina com quem gosta de Hollow Knight?" |
+| 7. Útil / não útil | Botões em cada resposta, "Meu feedback registrado" no painel do cliente e a tabela de feedback na aba de treinamento. |
+| 8. Ajuste fino | Aba **IA — Treinamento**: dados usados (resumo, exemplos e JSONL para baixar), procedimento (4 passos), histórico dos ajustes e "dados novos para o próximo treino automático". |
+
+### Testes automatizados
+
+| Teste | O que verifica |
+|---|---|
+| Massa de dados | Clientes com preferências distintas e feedback suficiente; dataset com exemplos de vendas e de feedback. |
+| Roteiros 2 e 3 | Nos exemplos de treino, Ana recebe RPG/aventura e Bruno, esporte/corrida; ninguém recebe jogo já comprado. |
+| Critério e | O cliente marca gêneros, plataformas e orçamento; as preferências ficam salvas, e orçamento inválido é recusado. |
+| Roteiro 7 | Avaliar no chat registra o feedback: aparece para o cliente e para o administrador, e muda o dataset do próximo treino. |
+| Roteiro 8 | A aba de treinamento mostra procedimento, dataset, histórico e feedback. Sem a IA pronta, o treino é recusado com a orientação. |
+| Critério a | O chat é do perfil cliente (403 para o administrador); o treinamento é do administrador. |
+| Roteiros 1 a 6 com a IA real | Rodam com o Ollama aberto: recomendações coerentes e diferentes para Ana e Bruno, busca, dúvida, conteúdo e avaliação de uma resposta real. |
+
+Nenhum teste inicia um ajuste fino, porque ele leva cerca de 2h30.
+
+### Endpoints
+
+| Método e caminho | Perfil | Uso |
+|---|---|---|
+| `GET /api/assistente/status` | Cliente | IA configurada e modelo em uso |
+| `GET /api/assistente/opcoes` | Cliente | Gêneros e plataformas do catálogo |
+| `GET/PUT /api/clientes/{id}/preferencias` | Cliente | Preferências do perfil |
+| `POST /api/clientes/{id}/assistente/mensagens` | Cliente | Mensagem ao assistente (`{conversaId, mensagem}`) |
+| `GET /api/clientes/{id}/assistente/avaliacoes` | Cliente | Feedback registrado pelo cliente |
+| `PUT /api/assistente/mensagens/{id}/avaliacao` | Cliente | `{avaliacao: "UTIL" \| "NAO_UTIL"}` |
+| `GET /api/ia/status` | Administrador | Provedor, modelo em uso, contagens e dados novos |
+| `GET /api/ia/dataset` e `/api/ia/dataset/arquivo` | Administrador | Resumo e JSONL do próximo ajuste fino |
+| `GET/POST /api/ia/treinamentos` | Administrador | Histórico e início de um ajuste fino |
+| `GET /api/ia/feedbacks` | Administrador | Todas as avaliações registradas |
 
 ## Produto: jogo no lugar de livro
 
@@ -478,8 +737,10 @@ conforme o texto literal do requisito; remoções não geram log.
 - **Controle de estoque** — RF0051/RF0052 e RN0050–RN0062. Existe apenas o
   ajuste manual de estoque na Gestão de vendas; a baixa por venda (RF0053)
   e a reentrada por troca (RF0054) estão implementadas.
-- **Análise (além do RF0055/RNF0043) e recomendação** — RF0056–RF0058,
-  RN0071–RN0074 e RNF0044–RNF0046 (numeração do DRS; não confundir com
+- **Análise além do RF0055/RNF0043/RN0072/RNF0045** — RF0056–RF0058,
+  RN0071, RN0073, RN0074 e RNF0046 (numeração do DRS; não confundir com
   RNF0045/RNF0046 da atividade de venda, que correspondem às RN0045/RN0046
   do DRS). Comparação por produto individual, exportação e projeções também
   ficam de fora, conforme a atividade.
+- **Recomendação fora do chat e outros canais de atendimento** — fora do
+  escopo da atividade do RNF0044.

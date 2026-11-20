@@ -131,6 +131,32 @@ const AnaliseApi = {
   },
 };
 
+// RNF0044 — assistente de recomendação com IA (perfil cliente)
+const AssistenteApi = {
+  status: () => apiRequestUrl("/api/assistente/status"),
+  opcoes: () => apiRequestUrl("/api/assistente/opcoes"),
+  preferencias: (clienteId) => apiRequestUrl(`/api/clientes/${clienteId}/preferencias`),
+  salvarPreferencias: (clienteId, dados) => apiRequestUrl(`/api/clientes/${clienteId}/preferencias`, json("PUT", dados)),
+  enviar: (clienteId, conversaId, mensagem) =>
+    apiRequestUrl(`/api/clientes/${clienteId}/assistente/mensagens`, json("POST", { conversaId, mensagem })),
+  avaliar: (mensagemId, avaliacao) => apiRequestUrl(`/api/assistente/mensagens/${mensagemId}/avaliacao`, json("PUT", { avaliacao })),
+  avaliacoes: (clienteId) => apiRequestUrl(`/api/clientes/${clienteId}/assistente/avaliacoes`),
+};
+
+// RNF0044 (item 3) — treinamento do modelo (administrador)
+const IaApi = {
+  status: () => apiRequestUrl("/api/ia/status"),
+  treinamentos: () => apiRequestUrl("/api/ia/treinamentos"),
+  treinar: () => apiRequestUrl("/api/ia/treinamentos", { method: "POST" }),
+  dataset: () => apiRequestUrl("/api/ia/dataset"),
+  feedbacks: () => apiRequestUrl("/api/ia/feedbacks"),
+  arquivoDataset: async () => {
+    const resp = await fetch("/api/ia/dataset/arquivo", { headers: { "X-Perfil": perfilAtual() } });
+    if (!resp.ok) throw new Error("Não foi possível baixar o dataset.");
+    return resp.blob();
+  },
+};
+
 // RNF0012 — log de auditoria (fora do prefixo /api/clientes)
 const AuditoriaApi = {
   listar: async () => {

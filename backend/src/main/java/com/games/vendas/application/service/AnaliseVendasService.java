@@ -27,6 +27,10 @@ public class AnaliseVendasService {
     /** Cada categoria é uma linha do gráfico; o limite acompanha as cores distinguíveis da paleta. */
     public static final int MAXIMO_CATEGORIAS = 8;
 
+    /** RN0072 — o período da consulta tem no mínimo 1 mês e no máximo 24 meses. */
+    public static final int PERIODO_MINIMO_MESES = 1;
+    public static final int PERIODO_MAXIMO_MESES = 24;
+
     public record SerieCategoria(String categoria, List<BigDecimal> valores, BigDecimal total) {}
 
     public record HistoricoVendas(LocalDate inicio, LocalDate fim, List<YearMonth> meses, List<SerieCategoria> series) {}
@@ -51,6 +55,14 @@ public class AnaliseVendasService {
         }
         if (inicio.isAfter(fim)) {
             throw new RegraNegocioException("RF0055", "A data de início deve ser anterior ou igual à data de fim.");
+        }
+        // RN0072 — a data de fim entra no período: 01/04 a 30/04 é um mês; 01/01/2025 a 31/12/2026, 24 meses
+        LocalDate diaSeguinteAoFim = fim.plusDays(1);
+        if (diaSeguinteAoFim.isBefore(inicio.plusMonths(PERIODO_MINIMO_MESES))) {
+            throw new RegraNegocioException("RN0072", "O período da consulta deve ter no mínimo " + PERIODO_MINIMO_MESES + " mês.");
+        }
+        if (diaSeguinteAoFim.isAfter(inicio.plusMonths(PERIODO_MAXIMO_MESES))) {
+            throw new RegraNegocioException("RN0072", "O período da consulta deve ter no máximo " + PERIODO_MAXIMO_MESES + " meses.");
         }
         List<String> categorias = new ArrayList<>(new LinkedHashSet<>(
                 categoriasInformadas == null ? List.of() : categoriasInformadas.stream().filter(c -> !c.isBlank()).toList()));

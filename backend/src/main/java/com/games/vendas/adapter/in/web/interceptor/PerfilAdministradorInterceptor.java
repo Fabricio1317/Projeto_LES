@@ -7,7 +7,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/** Libera a análise de vendas (RF0055 / RNF0043) somente para o perfil administrador. */
+/**
+ * Restringe ao perfil administrador a análise de vendas e o treinamento da IA (critérios das atividades;
+ * o DRS não numera essas restrições).
+ */
 @Component
 public class PerfilAdministradorInterceptor implements HandlerInterceptor {
 
@@ -15,7 +18,7 @@ public class PerfilAdministradorInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String perfil = request.getHeader(PerfilUsuario.CABECALHO);
         if (!PerfilUsuario.ADMINISTRADOR.name().equalsIgnoreCase(perfil)) {
-            throw new AcessoNegadoException("A análise de vendas é restrita ao perfil administrador.");
+            throw new AcessoNegadoException("Recurso restrito ao perfil administrador.");
         }
         return true;
     }

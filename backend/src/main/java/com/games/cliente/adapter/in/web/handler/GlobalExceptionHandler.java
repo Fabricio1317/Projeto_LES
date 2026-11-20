@@ -3,6 +3,7 @@ package com.games.cliente.adapter.in.web.handler;
 import com.games.cliente.adapter.in.web.dto.response.ErroResponse;
 import com.games.cliente.application.exception.AcessoNegadoException;
 import com.games.cliente.application.exception.ClienteNaoEncontradoException;
+import com.games.cliente.application.exception.IaIndisponivelException;
 import com.games.cliente.application.exception.RecursoNaoEncontradoException;
 import com.games.cliente.application.exception.RegraNegocioException;
 import com.games.cliente.domain.enums.Bandeira;
@@ -84,6 +85,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleAcessoNegado(AcessoNegadoException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ErroResponse.of(403, "ACESSO_RESTRITO", ex.getMessage()));
+    }
+
+    @ExceptionHandler(IaIndisponivelException.class)
+    public ResponseEntity<ErroResponse> handleIaIndisponivel(IaIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErroResponse.of(503, "IA_INDISPONIVEL", ex.getMessage()));
     }
 
     @ExceptionHandler(ClienteNaoEncontradoException.class)

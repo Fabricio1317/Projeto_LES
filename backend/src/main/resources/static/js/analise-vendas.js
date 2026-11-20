@@ -1,4 +1,4 @@
-// Análise de vendas por categoria (RF0055 / RNF0043), restrita ao perfil administrador:
+// Análise de vendas por categoria (RF0055 / RNF0043 / RN0072 / RNF0045), restrita ao perfil administrador:
 // período (início e fim), categorias a comparar e gráfico de linhas com o valor vendido por mês.
 
 const MAXIMO_CATEGORIAS = 8;
@@ -46,7 +46,8 @@ async function carregarAnalise() {
   const form = el("form-analise");
   if (!form.elements["inicio"].value) {
     const hoje = new Date();
-    form.elements["inicio"].value = dataIso(new Date(hoje.getFullYear(), hoje.getMonth() - 6, 1));
+    // período inicial: do mesmo mês do ano anterior até hoje (todo o histórico da massa de dados)
+    form.elements["inicio"].value = dataIso(new Date(hoje.getFullYear(), hoje.getMonth() - 12, 1));
     form.elements["fim"].value = dataIso(hoje);
   }
   try {
