@@ -286,6 +286,9 @@ public class PerfilRecomendacaoService {
                 se ele disser que não há nenhum, diga isso ao cliente e não cite outro jogo desse gênero.
                 - Evite os jogos que o cliente já marcou como recomendação não útil.
                 - Ao recomendar, prefira as SUGESTÕES PARA ESTE CLIENTE, que vêm do histórico de vendas da loja.
+                - Quando o cliente pedir uma recomendação, recomende na mesma resposta pelo menos um jogo das \
+                SUGESTÕES PARA ESTE CLIENTE, citando o título exatamente como está no CATÁLOGO. Não responda \
+                só com uma pergunta: o perfil já diz do que ele gosta.
                 - Quando o cliente descrever o tipo de jogo que quer (criar coisas, relaxar, jogar com amigos, sentir medo...), \
                 indique os jogos cujas características do CATÁLOGO combinam com o pedido. Se houver o bloco \
                 JOGOS QUE COMBINAM COM O PEDIDO, recomende esses jogos no lugar das SUGESTÕES; se ele disser que \
