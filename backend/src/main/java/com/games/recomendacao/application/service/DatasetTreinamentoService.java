@@ -81,7 +81,7 @@ public class DatasetTreinamentoService {
             // pedidos de recomendação: formas diferentes de um cliente para outro (6 no total)
             for (int i = 0; i < PEDIDOS_POR_CLIENTE; i++) {
                 int forma = (k + i * 3) % RedacaoRespostas.PEDIDOS_RECOMENDACAO.size();
-                linhas.add(ia.linhaDataset(instrucao, List.of(
+                linhas.add(ia.linhaDataset(prompt(instrucao, RedacaoRespostas.PEDIDOS_RECOMENDACAO.get(forma), perfil, catalogo, vendas), List.of(
                         new Turno(true, RedacaoRespostas.PEDIDOS_RECOMENDACAO.get(forma)),
                         new Turno(false, redacao.recomendacao(perfil, recomendacoes, forma)))));
                 exemplosVendas++;
@@ -94,23 +94,45 @@ public class DatasetTreinamentoService {
                 List<Recomendacao> parecidos = perfis.recomendar(perfil, catalogo.stream()
                         .filter(j -> j.genero().equals(generoBase) || vendas.coCompras().getOrDefault(base, Map.of()).containsKey(j.titulo()))
                         .toList(), vendas, 3);
-                linhas.add(ia.linhaDataset(instrucao, List.of(
-                        new Turno(true, "O que mais combina com quem gosta de " + base + "?"),
+                String perguntaParecidos = "O que mais combina com quem gosta de " + base + "?";
+                linhas.add(ia.linhaDataset(prompt(instrucao, perguntaParecidos, perfil, catalogo, vendas), List.of(
+                        new Turno(true, perguntaParecidos),
                         new Turno(false, redacao.parecidos(base, parecidos.isEmpty() ? recomendacoes : parecidos)))));
                 exemplosVendas++;
             }
 
             // dúvida sobre um jogo do catálogo
             JogoCatalogo duvida = recomendacoes.get(Math.min(1, recomendacoes.size() - 1)).jogo();
-            linhas.add(ia.linhaDataset(instrucao, List.of(
-                    new Turno(true, "O " + duvida.titulo() + " vale a pena?"),
-                    new Turno(false, redacao.sobreJogo(duvida)))));
+            String perguntaDuvida = "O " + duvida.titulo() + " vale a pena?";
+            linhas.add(ia.linhaDataset(prompt(instrucao, perguntaDuvida, perfil, catalogo, vendas), List.of(
+                    new Turno(true, perguntaDuvida),
+                    new Turno(false, redacao.sobreJogo(duvida, versoes(catalogo, duvida.titulo()), perfil)))));
+            exemplosVendas++;
+
+            // detalhes de um jogo que o cliente já tem e de um jogo de outro gênero: só os fatos do CATÁLOGO
+            String comprado = perfil.compras().get(0).titulo();
+            JogoCatalogo jaTem = catalogo.stream().filter(j -> j.titulo().equals(comprado)).findFirst().orElse(null);
+            if (jaTem != null) {
+                String perguntaJaTem = "Me fala sobre o " + comprado;
+                linhas.add(ia.linhaDataset(prompt(instrucao, perguntaJaTem, perfil, catalogo, vendas), List.of(
+                        new Turno(true, perguntaJaTem),
+                        new Turno(false, redacao.sobreJogo(jaTem, versoes(catalogo, comprado), perfil)))));
+                exemplosVendas++;
+            }
+            List<String> titulos = catalogo.stream().map(JogoCatalogo::titulo).distinct().toList();
+            String outroTitulo = titulos.get((k * 11 + 5) % titulos.size());
+            JogoCatalogo outro = versoes(catalogo, outroTitulo).get(0);
+            String perguntaOutro = "Como é o " + outroTitulo + "?";
+            linhas.add(ia.linhaDataset(prompt(instrucao, perguntaOutro, perfil, catalogo, vendas), List.of(
+                    new Turno(true, perguntaOutro),
+                    new Turno(false, redacao.sobreJogo(outro, versoes(catalogo, outroTitulo), perfil)))));
             exemplosVendas++;
 
             // assunto fora de jogos: recusa com educação e volta para a loja
             for (int j = 0; j < FORA_DO_ASSUNTO_POR_CLIENTE; j++) {
-                linhas.add(ia.linhaDataset(instrucao, List.of(
-                        new Turno(true, RedacaoRespostas.FORA_DO_ASSUNTO.get((k * FORA_DO_ASSUNTO_POR_CLIENTE + j) % RedacaoRespostas.FORA_DO_ASSUNTO.size())),
+                String foraDoAssunto = RedacaoRespostas.FORA_DO_ASSUNTO.get((k * FORA_DO_ASSUNTO_POR_CLIENTE + j) % RedacaoRespostas.FORA_DO_ASSUNTO.size());
+                linhas.add(ia.linhaDataset(prompt(instrucao, foraDoAssunto, perfil, catalogo, vendas), List.of(
+                        new Turno(true, foraDoAssunto),
                         new Turno(false, redacao.foraDoAssunto(perfil)))));
                 exemplosVendas++;
             }
@@ -120,26 +142,58 @@ public class DatasetTreinamentoService {
                 EstilosDeJogo.Estilo estilo = EstilosDeJogo.ESTILOS.get((k * ESTILOS_POR_CLIENTE + j) % EstilosDeJogo.ESTILOS.size());
                 String frase = estilo.frases().get((k + j) % estilo.frases().size());
                 // mesma instrução do chat: com o bloco dos jogos que combinam com o pedido
-                linhas.add(ia.linhaDataset(instrucao + estilos.blocoDoPedido(frase, perfil, catalogo), List.of(
+                linhas.add(ia.linhaDataset(prompt(instrucao, frase, perfil, catalogo, vendas), List.of(
                         new Turno(true, frase),
                         new Turno(false, redacao.estilo(perfil, estilo, estilos.jogosPara(estilo, perfil, catalogo, 3), k + j)))));
                 exemplosVendas++;
             }
 
             // conversa de duas voltas: recomenda e depois detalha o primeiro jogo
-            linhas.add(ia.linhaDataset(instrucao, List.of(
+            String maisSobre = "Me fala mais sobre o " + recomendacoes.get(0).jogo().titulo();
+            linhas.add(ia.linhaDataset(prompt(instrucao, maisSobre, perfil, catalogo, vendas), List.of(
                     new Turno(true, "Me recomenda um jogo?"),
                     new Turno(false, redacao.recomendacao(perfil, recomendacoes, 2)),
-                    new Turno(true, "Me fala mais sobre o " + recomendacoes.get(0).jogo().titulo()),
-                    new Turno(false, redacao.sobreJogo(recomendacoes.get(0).jogo())))));
+                    new Turno(true, maisSobre),
+                    new Turno(false, redacao.sobreJogo(recomendacoes.get(0).jogo(), versoes(catalogo, recomendacoes.get(0).jogo().titulo()), perfil)))));
             exemplosVendas++;
 
             String genero = perfil.generoPrincipal();
             if (genero != null) {
                 List<JogoCatalogo> doGenero = catalogo.stream().filter(j -> j.genero().equals(genero)).toList();
-                linhas.add(ia.linhaDataset(instrucao, List.of(
-                        new Turno(true, "Quais jogos de " + genero + " vocês têm?"),
+                String perguntaBusca = "Quais jogos de " + genero + " vocês têm?";
+                linhas.add(ia.linhaDataset(prompt(instrucao, perguntaBusca, perfil, catalogo, vendas), List.of(
+                        new Turno(true, perguntaBusca),
                         new Turno(false, redacao.busca(genero, doGenero, perfil)))));
+                exemplosVendas++;
+
+                // pedido de um gênero: só os jogos dele que respeitam plataformas, orçamento e o que o cliente já tem
+                String pedidoGenero = "Quero um jogo de " + genero.toLowerCase();
+                linhas.add(ia.linhaDataset(prompt(instrucao, pedidoGenero, perfil, catalogo, vendas), List.of(
+                        new Turno(true, pedidoGenero),
+                        new Turno(false, redacao.genero(perfil, genero, perfis.doGenero(perfil, catalogo, vendas, genero))))));
+                exemplosVendas++;
+
+                // e um gênero fora do gosto dele, para o modelo não depender do gênero preferido
+                List<String> generos = catalogo.stream().map(JogoCatalogo::genero).distinct().sorted().toList();
+                String outroGenero = generos.get((k * 5 + 3) % generos.size());
+                if (outroGenero.equals(genero)) outroGenero = generos.get((k * 5 + 4) % generos.size());
+                String pedidoOutroGenero = "Me indica um jogo de " + outroGenero.toLowerCase();
+                linhas.add(ia.linhaDataset(prompt(instrucao, pedidoOutroGenero, perfil, catalogo, vendas), List.of(
+                        new Turno(true, pedidoOutroGenero),
+                        new Turno(false, redacao.genero(perfil, outroGenero, perfis.doGenero(perfil, catalogo, vendas, outroGenero))))));
+                exemplosVendas++;
+            }
+
+            // pedido de uma plataforma que não está no perfil: os jogos indicados nela
+            List<String> plataformasDoCatalogo = catalogo.stream().map(JogoCatalogo::plataforma).distinct().sorted().toList();
+            List<String> outras = plataformasDoCatalogo.stream().filter(p -> !perfil.plataformasPreferidas().contains(p)).toList();
+            if (!outras.isEmpty()) {
+                String outra = outras.get(k % outras.size());
+                String pedidoPlataforma = "Tem algum jogo bom para " + outra + "?";
+                linhas.add(ia.linhaDataset(prompt(instrucao, pedidoPlataforma, perfil, catalogo, vendas), List.of(
+                        new Turno(true, pedidoPlataforma),
+                        new Turno(false, redacao.outraPlataforma(outra, perfis.recomendarOuMaisVendidos(
+                                perfil.comPlataformas(java.util.Set.of(outra)), catalogo, vendas, 3))))));
                 exemplosVendas++;
             }
 
@@ -147,7 +201,7 @@ public class DatasetTreinamentoService {
             BigDecimal limite = perfil.orcamento() != null ? perfil.orcamento() : new BigDecimal(k % 2 == 0 ? "150" : "200");
             List<Recomendacao> noOrcamento = perfis.dentroDoValor(perfil, catalogo, vendas, limite);
             String perguntaValor = "Tem algo até R$ " + limite.intValue() + "?";
-            linhas.add(ia.linhaDataset(instrucao + perfis.blocoOrcamento(perguntaValor, perfil, catalogo, vendas), List.of(
+            linhas.add(ia.linhaDataset(prompt(instrucao, perguntaValor, perfil, catalogo, vendas), List.of(
                     new Turno(true, perguntaValor),
                     new Turno(false, redacao.orcamento(limite, noOrcamento)))));
             exemplosVendas++;
@@ -157,7 +211,7 @@ public class DatasetTreinamentoService {
         int exemplosFeedback = 0;
         for (MensagemAssistente mensagem : mensagemRepository.findByAvaliacaoOrderByIdAsc(AvaliacaoResposta.UTIL)) {
             PerfilCliente perfil = perfilPorCliente.computeIfAbsent(mensagem.getClienteId(), perfis::perfil);
-            linhas.add(ia.linhaDataset(perfis.instrucaoSistema(perfil, catalogo, vendas), List.of(
+            linhas.add(ia.linhaDataset(prompt(perfis.instrucaoSistema(perfil, catalogo, vendas), mensagem.getPergunta(), perfil, catalogo, vendas), List.of(
                     new Turno(true, mensagem.getPergunta()),
                     new Turno(false, mensagem.getResposta()))));
             exemplosFeedback++;
@@ -167,5 +221,14 @@ public class DatasetTreinamentoService {
         return new DatasetTreinamento(String.join("\n", linhas) + "\n", exemplosVendas, exemplosFeedback, descartado,
                 clientes.size(), pedidoRepository.countByStatusIn(PerfilRecomendacaoService.EFETIVADAS),
                 mensagemRepository.countByAvaliacaoIsNotNull());
+    }
+
+    private static List<JogoCatalogo> versoes(List<JogoCatalogo> catalogo, String titulo) {
+        return catalogo.stream().filter(j -> j.titulo().equals(titulo)).toList();
+    }
+
+    /** A mesma instrução que o chat montaria para essa pergunta (com os blocos de estilo, valor e gênero). */
+    private String prompt(String instrucao, String pergunta, PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas) {
+        return perfis.comBlocosDoPedido(instrucao, pergunta, perfil, catalogo, vendas);
     }
 }

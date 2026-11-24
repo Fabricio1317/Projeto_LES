@@ -5,6 +5,7 @@ import com.games.recomendacao.adapter.in.web.dto.request.MensagemAssistenteReque
 import com.games.recomendacao.adapter.in.web.dto.request.PreferenciaRequest;
 import com.games.recomendacao.adapter.in.web.dto.response.MensagemAssistenteResponse;
 import com.games.recomendacao.adapter.in.web.dto.response.PreferenciaResponse;
+import com.games.recomendacao.adapter.in.web.dto.response.RecomendacaoResponse;
 import com.games.recomendacao.application.service.AssistenteService;
 import com.games.recomendacao.application.service.PreferenciaService;
 import com.games.recomendacao.application.service.PreferenciaService.OpcoesPreferencia;
@@ -72,6 +73,13 @@ public class AssistenteController {
     @PostMapping("/clientes/{clienteId}/assistente/mensagens")
     public ResponseEntity<MensagemAssistenteResponse> conversar(@PathVariable Long clienteId, @RequestBody MensagemAssistenteRequest req) {
         return ResponseEntity.ok(MensagemAssistenteResponse.from(assistenteService.conversar(clienteId, req.conversaId(), req.mensagem())));
+    }
+
+    /** Recomendações calculadas para o cliente, sem a IA: as mesmas que vão nas SUGESTÕES do prompt. */
+    @GetMapping("/clientes/{clienteId}/assistente/recomendacoes")
+    public ResponseEntity<List<RecomendacaoResponse>> recomendacoes(@PathVariable Long clienteId,
+                                                                    @RequestParam(defaultValue = "5") int quantidade) {
+        return ResponseEntity.ok(assistenteService.recomendacoes(clienteId, quantidade).stream().map(RecomendacaoResponse::from).toList());
     }
 
     @GetMapping("/clientes/{clienteId}/assistente/mensagens")

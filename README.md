@@ -484,16 +484,57 @@ próprio cliente**, no painel "Minhas preferências" da aba do assistente:
      ou dentro daquele valor, já filtrados pelo perfil (`EstilosDeJogo.blocoDoPedido`
      e `PerfilRecomendacaoService.blocoOrcamento`). É o mesmo bloco no chat e
      nos exemplos do treino, então o modelo aprende a recomendar a partir dele.
-     Um modelo de 1,5B não cruza bem sozinho a frase do cliente com as 37
+     Um modelo de 1,5B não cruza bem sozinho a frase do cliente com as 82
      linhas do catálogo.
+   - **Plataformas:** cada jogo é vendido nas plataformas em que foi lançado de
+     fato, uma versão por plataforma (ex.: Hollow Knight no PC e no Switch).
+     O catálogo da instrução mostra uma linha por jogo, com todas as
+     plataformas. Quem marcou plataformas no perfil só recebe recomendações
+     delas (`PerfilRecomendacaoService.daPlataformaDoCliente`). Sem plataforma
+     marcada, vale qualquer uma.
+   - **Catálogo:** são 82 jogos em 208 versões. Cada um dos 14 gêneros tem
+     pelo menos 3 jogos em cada uma das 4 plataformas (PC, Nintendo Switch,
+     PlayStation 5 e Xbox Series X|S). Assim, qualquer combinação marcada no
+     perfil tem recomendação. Dois testes do Cypress conferem isso: a
+     contagem por combinação e as 3 primeiras recomendações para cada uma das
+     56 combinações (`GET /api/clientes/{id}/assistente/recomendacoes`).
+   - **Orçamento:** o orçamento do perfil é o preço máximo por jogo. Acima dele
+     o jogo não é recomendado (`cabeNoOrcamento`), a não ser que o cliente
+     peça outro valor na mensagem ("tem algo até R$ 300?"). Se nenhum jogo do
+     gênero preferido cabe, a instrução diz isso e o assistente avisa o
+     cliente.
+   - **Conferência da resposta** (`ConferenciaResposta`): antes de mostrar a
+     resposta da IA, o backend confere cada jogo citado contra o perfil. São
+     barrados jogos que o cliente já tem, acima do orçamento (ou do valor
+     pedido na mensagem) e de plataformas que ele não usa. Também é barrada a
+     resposta a um pedido de recomendação que não cita nenhum jogo. Nesses
+     casos, a resposta é trocada pela resposta-modelo com os jogos da
+     pontuação, e o campo `modelo` da mensagem registra "corrigida pela
+     conferência do perfil". Buscas no catálogo ("quais jogos de terror
+     vocês têm?") não passam por essa parte.
+     - **Pergunta sobre um jogo** ("O Hogwarts Legacy vale a pena?"): as
+       plataformas, o preço e os destaques citados têm de bater com o
+       catálogo, e a resposta precisa dizer que o cliente já tem o jogo
+       (quando tem) e citar a plataforma dele. Se não bater, entram os fatos
+       do catálogo (`RedacaoRespostas.sobreJogo`).
+     - **Assunto fora de jogos** ("qual a capital da França?"): sempre a
+       recusa educada padrão. Cumprimentos e agradecimentos não contam.
+     - Testes unitários: `ConferenciaRespostaTest`.
+   - **Gênero pedido:** "quero um jogo de corrida" acrescenta o bloco JOGOS DO
+     GÊNERO PEDIDO, só com os jogos daquele gênero que respeitam plataformas,
+     orçamento e o que o cliente já tem (`blocoGenero`).
 4. **Ajuste fino** (`TreinamentoService` → `OllamaLocal` → `ia-local/treinar_lora.py`):
    - **Treino:** adaptador LoRA (rank 16) nas 8 últimas camadas do Qwen2.5, por
      2 épocas. A perda é calculada só nas falas do assistente.
    - **Publicação:** o adaptador é mesclado no modelo, convertido para GGUF (q8_0)
      com o conversor do llama.cpp e importado no Ollama como
      `nexus-recomendador-vN`.
-   - **Duração:** cerca de 2h30 na CPU com o dataset atual (o catálogo com
-     características deixa cada exemplo com cerca de 2.700 tokens). O andamento (época, porcentagem,
+   - **Duração:** a v5 levou cerca de 7h45 na CPU (150 exemplos, 2 épocas, perda
+     final 0,15). Para caber nesse tempo, o catálogo da instrução mostra só os
+     jogos das plataformas do cliente, com até 3 destaques cada, e cada exemplo
+     fica com cerca de 4.000 tokens (o limite do script é 7.168). Um pedido de
+     outra plataforma ("tem algo para Switch?") acrescenta o bloco JOGOS PARA A
+     PLATAFORMA PEDIDA. O andamento (época, porcentagem,
      perda e tempo restante) aparece na aba de treinamento.
    - **Troca de modelo:** quando termina, o modelo novo responde no chat. O
      anterior continua respondendo enquanto o novo treina.
@@ -518,8 +559,8 @@ seis conversas avaliadas (quatro úteis e duas não úteis):
 | Elisa Martins | Indies de plataforma e sandbox no PC, orçamento de R$ 100 |
 | Felipe Alves | Corrida e ação no Xbox |
 
-Com a massa de dados mais as vendas do histórico, o dataset tem **115
-exemplos**: 91 das vendas e 24 do feedback útil.
+Com a massa de dados mais as vendas do histórico, o dataset tem **150
+exemplos**: 126 das vendas e 24 do feedback útil.
 
 O catálogo inicial tem **37 jogos** em 13 gêneros: os 8 originais, 14 para
 dar opções às recomendações e 15 de estilos variados (criação, simulação,
@@ -605,7 +646,7 @@ Opcionais, por variável de ambiente ou `application.properties`:
 | Critério a | O chat é do perfil cliente (403 para o administrador); o treinamento é do administrador. |
 | Roteiros 1 a 6 com a IA real | Rodam com o Ollama aberto: recomendações coerentes e diferentes para Ana e Bruno, busca, dúvida, conteúdo e avaliação de uma resposta real. |
 
-Nenhum teste inicia um ajuste fino, porque ele leva cerca de 2h30.
+Nenhum teste inicia um ajuste fino, porque ele leva cerca de 8 horas.
 
 ### Endpoints
 
@@ -616,6 +657,7 @@ Nenhum teste inicia um ajuste fino, porque ele leva cerca de 2h30.
 | `GET/PUT /api/clientes/{id}/preferencias` | Cliente | Preferências do perfil |
 | `POST /api/clientes/{id}/assistente/mensagens` | Cliente | Mensagem ao assistente (`{conversaId, mensagem}`) |
 | `GET /api/clientes/{id}/assistente/avaliacoes` | Cliente | Feedback registrado pelo cliente |
+| `GET /api/clientes/{id}/assistente/recomendacoes?quantidade=5` | Cliente | Recomendações calculadas pela pontuação, sem a IA (as SUGESTÕES do prompt) |
 | `PUT /api/assistente/mensagens/{id}/avaliacao` | Cliente | `{avaliacao: "UTIL" \| "NAO_UTIL"}` |
 | `GET /api/ia/status` | Administrador | Provedor, modelo em uso, contagens e dados novos |
 | `GET /api/ia/dataset` e `/api/ia/dataset/arquivo` | Administrador | Resumo e JSONL do próximo ajuste fino |

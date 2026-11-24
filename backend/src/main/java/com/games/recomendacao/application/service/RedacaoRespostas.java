@@ -7,6 +7,7 @@ import com.games.recomendacao.application.service.PerfilRecomendacaoService.Reco
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -64,6 +65,14 @@ public class RedacaoRespostas {
                     : "Pensando no seu gosto por " + genero + ", eu indicaria:";
             default -> "Separei algumas opções do nosso catálogo que têm a sua cara:";
         };
+        // nenhuma sugestão dos gêneros preferidos (orçamento ou plataforma não permitem): avisa antes de listar
+        if (!perfil.generosPreferidos().isEmpty()
+                && recomendacoes.stream().noneMatch(r -> perfil.generosPreferidos().contains(r.jogo().genero()))) {
+            abertura = "Não encontrei um jogo de " + String.join(" ou ", perfil.generosPreferidos())
+                    + (perfil.orcamento() == null ? "" : " até " + moeda(perfil.orcamento()))
+                    + (perfil.plataformasPreferidas().isEmpty() ? "" : " para " + String.join(" ou ", perfil.plataformasPreferidas()))
+                    + " que você ainda não tenha, mas estes cabem no seu perfil:";
+        }
         return abertura + "\n" + listar(recomendacoes) + "\n" + FECHAMENTOS.get(variante % FECHAMENTOS.size());
     }
 
@@ -71,8 +80,12 @@ public class RedacaoRespostas {
         if (jogos.isEmpty()) {
             return "No momento não temos jogos de " + genero + " em estoque. Posso sugerir algo parecido?";
         }
-        String lista = jogos.stream().map(j -> "- **" + j.titulo() + "** (" + j.plataforma() + ") — " + moeda(j.preco())
-                + (perfil.titulosComprados().contains(j.titulo()) ? " — você já tem este" : ""))
+        // uma linha por jogo, com as plataformas em que ele sai
+        String lista = jogos.stream().collect(Collectors.groupingBy(JogoCatalogo::titulo, LinkedHashMap::new, Collectors.toList()))
+                .values().stream()
+                .map(versoes -> "- **" + versoes.get(0).titulo() + "** (" + PerfilRecomendacaoService.plataformas(versoes) + ") — "
+                        + PerfilRecomendacaoService.precos(versoes)
+                        + (perfil.titulosComprados().contains(versoes.get(0).titulo()) ? " — você já tem este" : ""))
                 .collect(Collectors.joining("\n"));
         return "Temos estes jogos de " + genero + " no catálogo:\n" + lista + "\nQuer que eu indique qual combina mais com você?";
     }
@@ -95,6 +108,27 @@ public class RedacaoRespostas {
                 + "\nTodas cabem no seu orçamento.";
     }
 
+    /** Pedido de um gênero ("quero um jogo de corrida"): só o que serve para o cliente, ou o aviso de que não há. */
+    public String genero(PerfilCliente perfil, String genero, List<Recomendacao> recomendacoes) {
+        if (recomendacoes.isEmpty()) {
+            return "No momento não temos um jogo de " + genero
+                    + (perfil.orcamento() == null ? "" : " até " + moeda(perfil.orcamento()))
+                    + (perfil.plataformasPreferidas().isEmpty() ? "" : " para " + String.join(" ou ", perfil.plataformasPreferidas()))
+                    + " que você ainda não tenha. Quer que eu procure com outro valor, outra plataforma ou outro gênero?";
+        }
+        return "De " + genero + ", estes combinam com você:\n" + listar(recomendacoes)
+                + "\nQuer que eu conte mais sobre algum deles?";
+    }
+
+    /** Pedido de outra plataforma ("tem algo para o Switch?"): os jogos indicados nela. */
+    public String outraPlataforma(String plataforma, List<Recomendacao> recomendacoes) {
+        if (recomendacoes.isEmpty()) {
+            return "Para " + plataforma + " não encontrei um jogo que combine com você agora. Quer que eu procure em outra plataforma?";
+        }
+        return "Para " + plataforma + ", estes combinam com você:\n" + listar(recomendacoes)
+                + "\nQuer que eu conte mais sobre algum deles?";
+    }
+
     public String parecidos(String base, List<Recomendacao> recomendacoes) {
         return "Quem gosta de **" + base + "** costuma curtir também:\n" + listar(recomendacoes)
                 + "\nQuer que eu conte mais sobre algum deles?";
@@ -105,14 +139,20 @@ public class RedacaoRespostas {
                 + "Posso te recomendar um jogo, procurar algum no catálogo ou tirar uma dúvida sobre um jogo?";
     }
 
-    public String sobreJogo(JogoCatalogo jogo) {
+    /**
+     * Detalhes de um jogo, só com os fatos da linha dele no CATÁLOGO (plataformas, gênero, classificação, preço e
+     * características), para o modelo aprender a não inventar. Se o cliente já tem o jogo, diz isso.
+     */
+    public String sobreJogo(JogoCatalogo jogo, List<JogoCatalogo> versoes, PerfilCliente perfil) {
         String classificacao = jogo.classificacao().equalsIgnoreCase("L") ? "livre para todos os públicos"
                 : "indicada para maiores de " + jogo.classificacao() + " anos";
-        // só fatos que estão no catálogo da instrução de sistema, para o modelo não aprender a inventar
-        return "**" + jogo.titulo() + "** é um jogo de " + jogo.genero() + " para " + jogo.plataforma()
+        String plataformas = PerfilRecomendacaoService.plataformas(versoes);
+        return "**" + jogo.titulo() + "** é um jogo de " + jogo.genero() + " para " + plataformas.replaceFirst(", ([^,]+)$", " e $1")
                 + (jogo.caracteristicas() != null ? ", com destaque para: " + jogo.caracteristicas() : "")
-                + ". A classificação é " + classificacao + ", e aqui na Nexus ele sai por " + moeda(jogo.preco())
-                + ". Quer que eu sugira outros parecidos?";
+                + ". A classificação é " + classificacao + ", e aqui na Nexus ele sai por " + PerfilRecomendacaoService.precos(versoes) + "."
+                + (perfil.titulosComprados().contains(jogo.titulo())
+                        ? " Você já tem este jogo; quer que eu sugira outros parecidos?"
+                        : " Quer que eu sugira outros parecidos?");
     }
 
     /** Resposta a um pedido por estilo ("quero criar coisas e ter liberdade"), citando as características que batem. */

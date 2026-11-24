@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -65,7 +66,120 @@ public class CargaInicialDominio implements ApplicationRunner {
             Map.entry("Portal 2", "quebra-cabeças inteligentes, humor, cooperativo para dois"),
             Map.entry("Overcooked! All You Can Eat", "cozinha caótica, cooperativo local, festa com amigos, partidas rápidas"),
             Map.entry("Street Fighter 6", "luta, competitivo online, partidas rápidas"),
-            Map.entry("Halo Infinite", "tiro em primeira pessoa, competitivo online, campanha de ficção científica"));
+            Map.entry("Halo Infinite", "tiro em primeira pessoa, competitivo online, campanha de ficção científica"),
+            Map.entry("Celeste", "indie, plataforma 2D desafiadora, história emocionante, trilha sonora marcante"),
+            Map.entry("Forza Motorsport", "simulação de corrida em pistas reais, carros licenciados, ideal com volante, multijogador online"),
+            // um jogo de cada gênero em cada plataforma (ao menos 3 por combinação)
+            Map.entry("Hades", "ação rápida, mitologia grega, muito desafiador, história"),
+            Map.entry("Bayonetta 3", "ação estilosa, combate frenético, combos, desafiador"),
+            Map.entry("Hyrule Warriors: Age of Calamity", "batalhas contra multidões, mundo de Zelda, cooperativo local"),
+            Map.entry("Devil May Cry 5 Special Edition", "combate estiloso, combos, muito desafiador"),
+            Map.entry("Need for Speed Unbound", "corrida de rua, mundo aberto, personalizar carros, multijogador online"),
+            Map.entry("Hot Wheels Unleashed", "pistas malucas, criar pistas, multijogador local, para toda a família"),
+            Map.entry("Crash Team Racing Nitro-Fueled", "kart divertido, multijogador local, para toda a família"),
+            Map.entry("Sid Meier's Civilization VII", "estratégia por turnos, construir um império, planejamento, partidas longas"),
+            Map.entry("Company of Heroes 3", "estratégia em tempo real, Segunda Guerra, táticas, planejamento"),
+            Map.entry("Crusader Kings III", "estratégia de dinastias, intrigas, escolhas que mudam a história, planejamento"),
+            Map.entry("Advance Wars 1+2: Re-Boot Camp", "estratégia por turnos, batalhas táticas, multijogador local"),
+            Map.entry("Just Dance 2025 Edition", "dança, festa com amigos e família, multijogador local"),
+            Map.entry("Party Animals", "festa com amigos, bichinhos fofos, caos divertido, multijogador online"),
+            Map.entry("Super Mario Party Jamboree", "minijogos, festa com amigos e família, multijogador local"),
+            Map.entry("Pico Park", "festa com amigos, quebra-cabeças cooperativos, partidas rápidas"),
+            Map.entry("Tekken 8", "luta 3D, competitivo online, partidas rápidas, história"),
+            Map.entry("Mortal Kombat 1", "luta violenta, competitivo online, partidas rápidas, história"),
+            Map.entry("Super Smash Bros. Ultimate", "luta com personagens da Nintendo, festa com amigos, multijogador local"),
+            Map.entry("Guilty Gear -Strive-", "luta 2D estilo anime, competitivo online, partidas rápidas"),
+            Map.entry("Sonic Superstars", "plataforma 2D veloz, cooperativo local, divertido para a família"),
+            Map.entry("Crash Bandicoot 4: It's About Time", "plataforma 3D desafiadora, colecionáveis, humor"),
+            Map.entry("Ori and the Will of the Wisps", "plataforma 2D, exploração, história emocionante, desafiador"),
+            Map.entry("Puyo Puyo Tetris 2", "quebra-cabeças rápidos, competitivo, festa com amigos, multijogador local"),
+            Map.entry("The Talos Principle 2", "quebra-cabeças inteligentes, exploração, ritmo tranquilo"),
+            Map.entry("Cocoon", "quebra-cabeças criativos, mundos dentro de mundos, ritmo tranquilo"),
+            Map.entry("Captain Toad: Treasure Tracker", "quebra-cabeças fáceis, cooperativo local, ideal para crianças"),
+            Map.entry("The Witcher 3: Wild Hunt Complete Edition", "mundo aberto, história marcante, escolhas que mudam a história, exploração"),
+            Map.entry("Pokémon Scarlet", "capturar e treinar Pokémon, mundo aberto, para todas as idades"),
+            Map.entry("Xenoblade Chronicles 3", "história épica, mundo enorme, exploração"),
+            Map.entry("Grounded", "sobrevivência no quintal, construir bases, cooperativo com amigos, exploração"),
+            Map.entry("Palworld", "capturar criaturas, construir bases, sobrevivência, cooperativo online"),
+            Map.entry("PowerWash Simulator", "limpar tudo com jato de água, relaxante, ritmo tranquilo, cooperativo"),
+            Map.entry("Farming Simulator 25", "fazenda realista, máquinas agrícolas, ritmo tranquilo"),
+            Map.entry("Disney Dreamlight Valley", "personagens da Disney, decorar e criar o seu vale, relaxante, para todas as idades"),
+            Map.entry("Dead Space", "terror espacial, sustos, tensão, sobrevivência"),
+            Map.entry("Little Nightmares II", "terror sombrio, suspense, quebra-cabeças"),
+            Map.entry("Luigi's Mansion 3", "mansão assombrada, sustos leves, cooperativo local, divertido para a família"),
+            Map.entry("Alien: Isolation", "terror de sobrevivência, suspense, muita tensão"),
+            Map.entry("Call of Duty: Black Ops 6", "tiro em primeira pessoa, competitivo online, campanha de ação"),
+            Map.entry("Doom Eternal", "tiro frenético, combate intenso, muito desafiador"),
+            Map.entry("Splatoon 3", "tiro de tinta colorido, competitivo online, para todas as idades"),
+            Map.entry("Metroid Prime Remastered", "tiro em primeira pessoa, exploração, ficção científica"),
+            Map.entry("Helldivers 2", "tiro cooperativo com amigos, missões caóticas, ficção científica"));
+
+    /**
+     * RNF0044 — versões do mesmo jogo em outras plataformas em que ele foi lançado de fato. Cada versão é
+     * um item do catálogo (com estoque próprio), como numa loja real, para o assistente recomendar o jogo
+     * na plataforma que o cliente tem.
+     */
+    private static final Map<String, List<String>> OUTRAS_PLATAFORMAS = Map.ofEntries(
+            Map.entry("Elden Ring", List.of("PC", "Xbox Series X|S")),
+            Map.entry("God of War Ragnarök", List.of("PC")),
+            Map.entry("EA Sports FC 25", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Forza Horizon 5", List.of("PC", "PlayStation 5")),
+            Map.entry("Minecraft", List.of("PC", "PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Cyberpunk 2077", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Baldur's Gate 3", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Final Fantasy XVI", List.of("PC")),
+            Map.entry("Starfield", List.of("PC")),
+            Map.entry("Hogwarts Legacy", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Marvel's Spider-Man 2", List.of("PC")),
+            Map.entry("Red Dead Redemption 2", List.of("PC")),
+            Map.entry("NBA 2K25", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Tony Hawk's Pro Skater 1+2", List.of("PC", "PlayStation 5", "Nintendo Switch")),
+            Map.entry("Hollow Knight", List.of("Nintendo Switch")),
+            Map.entry("Terraria", List.of("Nintendo Switch")),
+            Map.entry("Stardew Valley", List.of("PC")),
+            Map.entry("Microsoft Flight Simulator 2024", List.of("PC")),
+            Map.entry("Sid Meier's Civilization VI", List.of("Nintendo Switch")),
+            Map.entry("No Man's Sky", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("It Takes Two", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Valheim", List.of("Xbox Series X|S")),
+            Map.entry("Resident Evil 4", List.of("PC", "Xbox Series X|S")),
+            Map.entry("Alan Wake 2", List.of("PC", "PlayStation 5")),
+            Map.entry("Overcooked! All You Can Eat", List.of("PC", "PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Street Fighter 6", List.of("PC", "Xbox Series X|S")),
+            Map.entry("Halo Infinite", List.of("PC")),
+            Map.entry("Celeste", List.of("Nintendo Switch")),
+            Map.entry("Forza Motorsport", List.of("PC")),
+            Map.entry("Hades", List.of("Nintendo Switch", "PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Devil May Cry 5 Special Edition", List.of("Xbox Series X|S")),
+            Map.entry("Need for Speed Unbound", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Hot Wheels Unleashed", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Sid Meier's Civilization VII", List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Company of Heroes 3", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Crusader Kings III", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Just Dance 2025 Edition", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Party Animals", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Pico Park", List.of("Nintendo Switch")),
+            Map.entry("Tekken 8", List.of("PC", "Xbox Series X|S")),
+            Map.entry("Mortal Kombat 1", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Guilty Gear -Strive-", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Sonic Superstars", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Crash Bandicoot 4: It's About Time", List.of("PC", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Ori and the Will of the Wisps", List.of("PC", "Nintendo Switch")),
+            Map.entry("Puyo Puyo Tetris 2", List.of("PC", "PlayStation 5", "Xbox Series X|S")),
+            Map.entry("The Talos Principle 2", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Cocoon", List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("The Witcher 3: Wild Hunt Complete Edition", List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Grounded", List.of("PC", "PlayStation 5", "Nintendo Switch")),
+            Map.entry("Palworld", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("PowerWash Simulator", List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Farming Simulator 25", List.of("PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Disney Dreamlight Valley", List.of("PC", "PlayStation 5", "Xbox Series X|S")),
+            Map.entry("Dead Space", List.of("PC", "Xbox Series X|S")),
+            Map.entry("Little Nightmares II", List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Alien: Isolation", List.of("Nintendo Switch")),
+            Map.entry("Call of Duty: Black Ops 6", List.of("PC", "Xbox Series X|S")),
+            Map.entry("Doom Eternal", List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch")),
+            Map.entry("Helldivers 2", List.of("PC", "Xbox Series X|S")));
 
     private final ParametroSistemaRepository parametroRepository;
     private final JogoRepository jogoRepository;
@@ -127,6 +241,54 @@ public class CargaInicialDominio implements ApplicationRunner {
             jogo("Overcooked! All You Can Eat", "Nintendo Switch", "Festa", "Ghost Town Games", "Team17", "L", 2020, "5056208808455", "149.90", 25, "0.100");
             jogo("Street Fighter 6", "PlayStation 5", "Luta", "Capcom", "Capcom", "12", 2023, "013388410200", "229.90", 20, "0.120");
             jogo("Halo Infinite", "Xbox Series X|S", "Tiro", "343 Industries", "Xbox Game Studios", "16", 2021, "889842744340", "199.90", 20, "0.110");
+            // mais opções por plataforma: indie de plataforma no PC e corrida de simulação no Xbox
+            jogo("Celeste", "PC", "Plataforma", "Maddy Makes Games", "Maddy Makes Games", "10", 2018, null, "36.90", 40, "0.100");
+            jogo("Forza Motorsport", "Xbox Series X|S", "Corrida", "Turn 10 Studios", "Xbox Game Studios", "L", 2023, null, "249.90", 20, "0.110");
+            // pelo menos 3 jogos de cada gênero em cada plataforma (RNF0044: recomendação para qualquer combinação do perfil)
+            jogo("Hades", "PC", "Ação", "Supergiant Games", "Supergiant Games", "14", 2020, null, "79.90", 40, "0.100");
+            jogo("Bayonetta 3", "Nintendo Switch", "Ação", "PlatinumGames", "Nintendo", "16", 2022, null, "299.90", 20, "0.100");
+            jogo("Hyrule Warriors: Age of Calamity", "Nintendo Switch", "Ação", "Koei Tecmo", "Nintendo", "12", 2020, null, "299.90", 20, "0.100");
+            jogo("Devil May Cry 5 Special Edition", "PlayStation 5", "Ação", "Capcom", "Capcom", "18", 2020, null, "129.90", 20, "0.120");
+            jogo("Need for Speed Unbound", "PC", "Corrida", "Criterion Games", "Electronic Arts", "12", 2022, null, "199.90", 20, "0.150");
+            jogo("Hot Wheels Unleashed", "PlayStation 5", "Corrida", "Milestone", "Milestone", "L", 2021, null, "149.90", 25, "0.120");
+            jogo("Crash Team Racing Nitro-Fueled", "Nintendo Switch", "Corrida", "Beenox", "Activision", "L", 2019, null, "199.90", 20, "0.100");
+            jogo("Sid Meier's Civilization VII", "PC", "Estratégia", "Firaxis Games", "2K", "10", 2025, null, "299.90", 20, "0.150");
+            jogo("Company of Heroes 3", "PC", "Estratégia", "Relic Entertainment", "Sega", "16", 2023, null, "199.90", 15, "0.150");
+            jogo("Crusader Kings III", "PC", "Estratégia", "Paradox Development Studio", "Paradox Interactive", "14", 2020, null, "149.90", 15, "0.150");
+            jogo("Advance Wars 1+2: Re-Boot Camp", "Nintendo Switch", "Estratégia", "WayForward", "Nintendo", "10", 2023, null, "299.90", 20, "0.100");
+            jogo("Just Dance 2025 Edition", "Nintendo Switch", "Festa", "Ubisoft Paris", "Ubisoft", "L", 2024, null, "249.90", 25, "0.100");
+            jogo("Party Animals", "PC", "Festa", "Recreate Games", "Source Technology", "L", 2023, null, "99.90", 25, "0.150");
+            jogo("Super Mario Party Jamboree", "Nintendo Switch", "Festa", "Nintendo Cube", "Nintendo", "L", 2024, null, "299.90", 25, "0.100");
+            jogo("Pico Park", "PC", "Festa", "TECOPARK", "TECOPARK", "L", 2019, null, "19.90", 40, "0.100");
+            jogo("Tekken 8", "PlayStation 5", "Luta", "Bandai Namco Studios", "Bandai Namco", "14", 2024, null, "249.90", 20, "0.120");
+            jogo("Mortal Kombat 1", "PlayStation 5", "Luta", "NetherRealm Studios", "Warner Bros. Games", "18", 2023, null, "249.90", 20, "0.120");
+            jogo("Super Smash Bros. Ultimate", "Nintendo Switch", "Luta", "Bandai Namco Studios", "Nintendo", "10", 2018, null, "299.90", 30, "0.100");
+            jogo("Guilty Gear -Strive-", "PlayStation 5", "Luta", "Arc System Works", "Arc System Works", "12", 2021, null, "149.90", 15, "0.120");
+            jogo("Sonic Superstars", "PlayStation 5", "Plataforma", "Sonic Team", "Sega", "L", 2023, null, "199.90", 20, "0.120");
+            jogo("Crash Bandicoot 4: It's About Time", "PlayStation 5", "Plataforma", "Toys for Bob", "Activision", "10", 2020, null, "149.90", 20, "0.120");
+            jogo("Ori and the Will of the Wisps", "Xbox Series X|S", "Plataforma", "Moon Studios", "Xbox Game Studios", "10", 2020, null, "79.90", 25, "0.110");
+            jogo("Puyo Puyo Tetris 2", "Nintendo Switch", "Puzzle", "Sega", "Sega", "L", 2020, null, "149.90", 25, "0.100");
+            jogo("The Talos Principle 2", "PC", "Puzzle", "Croteam", "Devolver Digital", "10", 2023, null, "149.90", 15, "0.150");
+            jogo("Cocoon", "PC", "Puzzle", "Geometric Interactive", "Annapurna Interactive", "10", 2023, null, "99.90", 20, "0.150");
+            jogo("Captain Toad: Treasure Tracker", "Nintendo Switch", "Puzzle", "Nintendo", "Nintendo", "L", 2018, null, "249.90", 20, "0.100");
+            jogo("The Witcher 3: Wild Hunt Complete Edition", "PC", "RPG", "CD Projekt Red", "CD Projekt", "18", 2015, null, "149.90", 20, "0.150");
+            jogo("Pokémon Scarlet", "Nintendo Switch", "RPG", "Game Freak", "Nintendo", "L", 2022, null, "299.90", 30, "0.100");
+            jogo("Xenoblade Chronicles 3", "Nintendo Switch", "RPG", "Monolith Soft", "Nintendo", "12", 2022, null, "299.90", 15, "0.100");
+            jogo("Grounded", "Xbox Series X|S", "Sandbox", "Obsidian Entertainment", "Xbox Game Studios", "12", 2022, null, "149.90", 20, "0.110");
+            jogo("Palworld", "PC", "Sandbox", "Pocketpair", "Pocketpair", "12", 2024, null, "99.90", 25, "0.150");
+            jogo("PowerWash Simulator", "PC", "Simulação", "FuturLab", "Square Enix", "L", 2022, null, "99.90", 25, "0.150");
+            jogo("Farming Simulator 25", "PC", "Simulação", "Giants Software", "Giants Software", "L", 2024, null, "199.90", 20, "0.150");
+            jogo("Disney Dreamlight Valley", "Nintendo Switch", "Simulação", "Gameloft", "Gameloft", "L", 2023, null, "149.90", 25, "0.100");
+            jogo("Dead Space", "PlayStation 5", "Terror", "Motive Studio", "Electronic Arts", "18", 2023, null, "249.90", 15, "0.120");
+            jogo("Little Nightmares II", "PC", "Terror", "Tarsier Studios", "Bandai Namco", "14", 2021, null, "99.90", 20, "0.150");
+            jogo("Luigi's Mansion 3", "Nintendo Switch", "Terror", "Next Level Games", "Nintendo", "L", 2019, null, "299.90", 20, "0.100");
+            jogo("Alien: Isolation", "PC", "Terror", "Creative Assembly", "Sega", "16", 2014, null, "99.90", 15, "0.150");
+            jogo("Call of Duty: Black Ops 6", "PlayStation 5", "Tiro", "Treyarch", "Activision", "18", 2024, null, "349.90", 30, "0.120");
+            jogo("Doom Eternal", "PC", "Tiro", "id Software", "Bethesda Softworks", "18", 2020, null, "99.90", 20, "0.150");
+            jogo("Splatoon 3", "Nintendo Switch", "Tiro", "Nintendo", "Nintendo", "10", 2022, null, "299.90", 25, "0.100");
+            jogo("Metroid Prime Remastered", "Nintendo Switch", "Tiro", "Retro Studios", "Nintendo", "12", 2023, null, "199.90", 20, "0.100");
+            jogo("Helldivers 2", "PlayStation 5", "Tiro", "Arrowhead Game Studios", "Sony Interactive Entertainment", "16", 2024, null, "199.90", 20, "0.120");
+            outrasPlataformas();
         }
         jogoRepository.findAll().forEach(j -> {
             if (j.getCaracteristicas() == null && CARACTERISTICAS.containsKey(j.getTitulo())) {
@@ -145,6 +307,17 @@ public class CargaInicialDominio implements ApplicationRunner {
                       String classificacao, int ano, String codigoBarras, String preco, int estoque, String peso) {
         jogoRepository.save(new Jogo(titulo, plataforma, genero, desenvolvedora, distribuidora, classificacao, ano,
                 codigoBarras, new BigDecimal(preco), estoque, new BigDecimal(peso)));
+    }
+
+    /** Mesmos dados do jogo, na outra plataforma (o código de barras muda por versão, então fica em branco). */
+    private void outrasPlataformas() {
+        for (Jogo base : jogoRepository.findAll()) {
+            for (String plataforma : OUTRAS_PLATAFORMAS.getOrDefault(base.getTitulo(), List.of())) {
+                jogoRepository.save(new Jogo(base.getTitulo(), plataforma, base.getGenero(), base.getDesenvolvedora(),
+                        base.getDistribuidora(), base.getClassificacaoIndicativa(), base.getAno(), null, base.getPreco(),
+                        base.getEstoque(), base.getPesoKg()));
+            }
+        }
     }
 
     private void cupom(String codigo, String valor, LocalDate validade) {

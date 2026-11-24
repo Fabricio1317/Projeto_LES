@@ -41,12 +41,13 @@ public class AssistenteService {
     private final IaGenerativa ia;
     private final MensagemAssistenteRepository mensagemRepository;
     private final ClienteRepository clienteRepository;
-    private final EstilosDeJogo estilos;
+    private final ConferenciaResposta conferencia;
 
-    public AssistenteService(PerfilRecomendacaoService perfis, EstilosDeJogo estilos, TreinamentoService treinamentos, IaGenerativa ia,
-                             MensagemAssistenteRepository mensagemRepository, ClienteRepository clienteRepository) {
+    public AssistenteService(PerfilRecomendacaoService perfis, TreinamentoService treinamentos, IaGenerativa ia,
+                             MensagemAssistenteRepository mensagemRepository, ClienteRepository clienteRepository,
+                             ConferenciaResposta conferencia) {
         this.perfis = perfis;
-        this.estilos = estilos;
+        this.conferencia = conferencia;
         this.treinamentos = treinamentos;
         this.ia = ia;
         this.mensagemRepository = mensagemRepository;
@@ -76,16 +77,24 @@ public class AssistenteService {
 
         PerfilCliente perfil = perfis.perfil(clienteId);
         List<JogoCatalogo> catalogo = perfis.catalogo();
-        // pedido por estilo ("quero criar coisas..."): os jogos com essas características vão destacados no prompt
-        // e um valor ("até R$ 150"), os jogos que cabem nele
+        // pedido por estilo ("quero criar coisas..."), valor ("até R$ 150") ou gênero ("um jogo de corrida"):
+        // os jogos que servem para o cliente vão destacados no prompt
         DadosVendas vendas = perfis.dadosVendas();
-        String instrucao = perfis.instrucaoSistema(perfil, catalogo, vendas)
-                + estilos.blocoDoPedido(texto, perfil, catalogo) + perfis.blocoOrcamento(texto, perfil, catalogo, vendas);
+        String instrucao = perfis.comBlocosDoPedido(perfis.instrucaoSistema(perfil, catalogo, vendas), texto, perfil, catalogo, vendas);
         Optional<TreinamentoModelo> emUso = treinamentos.modeloEmUso();
         String resposta = ia.responder(emUso.map(TreinamentoModelo::getModeloAjustado).orElse(null), instrucao, turnos);
         String modelo = emUso.map(t -> t.getNomeModelo() + " (ajuste fino de " + t.getModeloBase() + ")")
                 .orElse(ia.modeloBase() + " (modelo base)");
-        return mensagemRepository.save(new MensagemAssistente(clienteId, conversa, texto.trim(), resposta, modelo));
+        // a IA citou um jogo que o cliente já tem, acima do orçamento ou de outra plataforma: vale a resposta conferida
+        ConferenciaResposta.Resultado conferida = conferencia.conferir(resposta, texto, perfil, catalogo, vendas);
+        if (conferida.substituida()) modelo += " — corrigida pela conferência do perfil";
+        return mensagemRepository.save(new MensagemAssistente(clienteId, conversa, texto.trim(), conferida.resposta(), modelo));
+    }
+
+    /** As recomendações calculadas para o cliente (o que vai nas SUGESTÕES do prompt), sem passar pela IA. */
+    public List<PerfilRecomendacaoService.Recomendacao> recomendacoes(Long clienteId, int quantidade) {
+        PerfilCliente perfil = perfis.perfil(clienteId);
+        return perfis.recomendar(perfil, perfis.catalogo(), perfis.dadosVendas(), quantidade);
     }
 
     public MensagemAssistente avaliar(Long mensagemId, AvaliacaoResposta avaliacao) {

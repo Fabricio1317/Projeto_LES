@@ -109,7 +109,7 @@ public class OllamaLocal implements IaGenerativa {
         corpo.put("model", modelo == null ? modeloBase : modelo);
         corpo.put("messages", mensagens(instrucaoSistema, conversa));
         corpo.put("stream", false);
-        corpo.put("options", Map.of("temperature", 0.3, "num_ctx", 4096));
+        corpo.put("options", Map.of("temperature", 0.3, "num_ctx", 12288));
         try {
             JsonNode resposta = http.post().uri(ollamaUrl + "/api/chat")
                     .contentType(MediaType.APPLICATION_JSON).body(corpo)

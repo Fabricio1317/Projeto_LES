@@ -6,13 +6,16 @@
 // Os testes que dependem da IA de verdade (conversa real) rodam só quando o Ollama está rodando com
 // o modelo base (GET /api/assistente/status → configurada = true); sem ele, são pulados. Os demais
 // cobrem a massa de dados, as preferências, o registro do feedback, o dataset do ajuste fino e o
-// acesso por perfil. Nenhum teste inicia um ajuste fino de verdade (ele leva cerca de uma hora).
+// acesso por perfil. Nenhum teste inicia um ajuste fino de verdade (ele leva cerca de 8 horas).
 // A aplicação deve estar rodando em http://localhost:8080 (ver README).
 
 const { API, criarCliente } = require("../support/vendas-helpers");
 
 const CLIENTE = { "X-Perfil": "CLIENTE" };
 const ADMIN = { "X-Perfil": "ADMINISTRADOR" };
+// os 14 gêneros do catálogo da loja (outras suítes criam categorias de teste com um jogo só)
+const GENEROS_DA_LOJA = ["Ação", "Aventura", "Corrida", "Esporte", "Estratégia", "Festa", "Luta", "Plataforma", "Puzzle",
+  "RPG", "Sandbox", "Simulação", "Terror", "Tiro"];
 const ANA = "ana.souza@nexus.com.br";
 const BRUNO = "bruno.lima@nexus.com.br";
 
@@ -178,6 +181,59 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
         cy.get("[data-cy=mensagem]").should("have.class", "erro").and("contain.text", "RNF0044");
       });
     });
+
+    it("RNF0044 — o catálogo tem pelo menos 3 jogos de cada gênero em cada plataforma", () => {
+      cy.request({ url: `${API}/assistente/opcoes`, headers: CLIENTE }).its("body").then(({ generos: todos, plataformas }) => {
+          const generos = GENEROS_DA_LOJA;
+          expect(todos).to.include.members(GENEROS_DA_LOJA);
+        expect(plataformas).to.have.members(["Nintendo Switch", "PC", "PlayStation 5", "Xbox Series X|S"]);
+        cy.request(`${API}/jogos`).its("body").then((jogos) => {
+          const faltando = [];
+          generos.forEach((genero) => plataformas.forEach((plataforma) => {
+            const titulos = new Set(jogos.filter((j) => j.genero === genero && j.plataforma === plataforma).map((j) => j.titulo));
+            if (titulos.size < 3) faltando.push(`${genero} / ${plataforma}: ${titulos.size}`);
+          }));
+          expect(faltando, "combinações gênero / plataforma com menos de 3 jogos").to.be.empty;
+        });
+      });
+    });
+
+    it("RNF0044 — para qualquer gênero e plataforma marcados no perfil, as 3 primeiras recomendações são daquele gênero e plataforma", () => {
+      criarCliente().then((novo) => {
+        cy.request({ url: `${API}/assistente/opcoes`, headers: CLIENTE }).its("body").then(({ generos: todos, plataformas }) => {
+          const generos = GENEROS_DA_LOJA;
+          expect(todos).to.include.members(GENEROS_DA_LOJA);
+          const erradas = [];
+          generos.forEach((genero) => plataformas.forEach((plataforma) => {
+            cy.request({ method: "PUT", url: `${API}/clientes/${novo.id}/preferencias`, headers: CLIENTE,
+              body: { generos: [genero], plataformas: [plataforma], orcamentoMaximo: null, observacoes: null } });
+            cy.request({ url: `${API}/clientes/${novo.id}/assistente/recomendacoes?quantidade=3`, headers: CLIENTE }).its("body")
+              .then((recomendacoes) => {
+                const certas = recomendacoes.filter((r) => r.genero === genero && r.plataforma === plataforma);
+                if (recomendacoes.length < 3 || certas.length < 3) {
+                  erradas.push(`${genero} / ${plataforma}: ${recomendacoes.map((r) => `${r.titulo} (${r.genero}, ${r.plataforma})`).join("; ")}`);
+                }
+              });
+          }));
+          cy.then(() => expect(erradas, "combinações sem 3 recomendações do gênero e da plataforma").to.be.empty);
+        });
+      });
+    });
+
+    it("RNF0044 — o orçamento e as plataformas do perfil são limites: nenhuma recomendação passa deles", () => {
+      criarCliente().then((novo) => {
+        cy.request({ method: "PUT", url: `${API}/clientes/${novo.id}/preferencias`, headers: CLIENTE,
+          body: { generos: ["Corrida"], plataformas: ["Xbox Series X|S"], orcamentoMaximo: 100, observacoes: null } });
+        cy.request({ url: `${API}/clientes/${novo.id}/assistente/recomendacoes?quantidade=10`, headers: CLIENTE }).its("body")
+          .then((recomendacoes) => {
+            expect(recomendacoes).to.not.be.empty;
+            recomendacoes.forEach((r) => {
+              expect(r.preco, `${r.titulo} cabe no orçamento`).to.be.at.most(100);
+              expect(r.plataforma, `${r.titulo} é da plataforma do cliente`).to.eq("Xbox Series X|S");
+            });
+          });
+      });
+    });
   });
 
   // =====================================================================
@@ -339,8 +395,11 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
       iaConfigurada().then((configurada) => {
         if (!configurada) this.skip();
         abrirAssistenteComo(BRUNO);
-        perguntar("Quais jogos de corrida vocês têm?").then((resposta) => {
-          expect(["Gran Turismo 7", "Mario Kart 8 Deluxe", "Forza Horizon 5"].some((t) => resposta.includes(t))).to.eq(true);
+        cy.request(`${API}/jogos`).its("body").then((jogos) => {
+          const corrida = jogos.filter((j) => j.genero === "Corrida").map((j) => j.titulo);
+          perguntar("Quais jogos de corrida vocês têm?").then((resposta) => {
+            expect(corrida.some((t) => resposta.includes(t)), "cita um jogo de corrida do catálogo").to.eq(true);
+          });
         });
         perguntar("O Gran Turismo 7 é bom para quem está começando?").then((resposta) => expect(resposta.length).to.be.greaterThan(20));
         perguntar("Que outros conteúdos você me sugere para aproveitar melhor os jogos de corrida?")

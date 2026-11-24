@@ -68,7 +68,7 @@ def main():
     parser.add_argument("--epocas", type=int, default=2)
     parser.add_argument("--taxa", type=float, default=2e-4)
     parser.add_argument("--rank", type=int, default=16)
-    parser.add_argument("--max-tokens", type=int, default=3200)
+    parser.add_argument("--max-tokens", type=int, default=7168)  # catálogo com 82 jogos: exemplos de até ~6.300 tokens
     parser.add_argument("--acumulacao", type=int, default=4)
     parser.add_argument("--camadas", type=int, default=8, help="últimas camadas que recebem o LoRA")
     parser.add_argument("--ollama", default="ollama")

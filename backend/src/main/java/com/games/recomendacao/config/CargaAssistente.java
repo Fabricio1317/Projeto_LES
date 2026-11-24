@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -52,7 +51,7 @@ import java.util.stream.Collectors;
  *   <li>Carla Mendes — plataforma e sandbox no Switch, para a família;</li>
  *   <li>Diego Rocha — ação no PlayStation 5;</li>
  *   <li>Elisa Martins — indies de plataforma e sandbox no PC, orçamento de R$ 100;</li>
- *   <li>Felipe Alves — corrida e ação no Xbox.</li>
+ *   <li>Felipe Alves — corrida e ação no Xbox, orçamento de R$ 100 (nenhum jogo de corrida cabe nele).</li>
  * </ul>
  */
 @Component
@@ -82,7 +81,7 @@ public class CargaAssistente implements ApplicationRunner {
                     List.of("Plataforma", "Sandbox"), List.of("PC"), "100.00", "Prefiro jogos independentes e baratos.",
                     List.of("Hollow Knight", "Terraria", "Cyberpunk 2077")),
             new ClienteMassa("Felipe Alves", GeneroCliente.MASCULINO, LocalDate.of(1985, 9, 9), "444777000", "felipe.alves@nexus.com.br",
-                    List.of("Corrida"), List.of("Xbox Series X|S"), null, "Tenho volante e gosto de simulação.",
+                    List.of("Corrida"), List.of("Xbox Series X|S"), "100.00", "Tenho volante e gosto de simulação.",
                     List.of("Forza Horizon 5", "Red Dead Redemption 2")));
 
     private final ClienteService clienteService;
@@ -114,8 +113,8 @@ public class CargaAssistente implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         if (clienteRepository.existsByEmail(CLIENTES.get(0).email())) return;
-        Map<String, Jogo> jogos = jogoRepository.findAllByOrderByTituloAsc().stream()
-                .collect(Collectors.toMap(Jogo::getTitulo, Function.identity(), (a, b) -> a));
+        Map<String, List<Jogo>> jogos = jogoRepository.findAllByOrderByTituloAsc().stream()
+                .collect(Collectors.groupingBy(Jogo::getTitulo));
 
         List<Long> ids = new ArrayList<>();
         for (ClienteMassa dados : CLIENTES) {
@@ -125,7 +124,7 @@ public class CargaAssistente implements ApplicationRunner {
                     "São Paulo", "SP", "Brasil"));
             ids.add(cliente.getId());
             for (int i = 0; i < dados.compras().size(); i++) {
-                comprar(cliente, jogos.get(dados.compras().get(i)), 8 - 2 * i);
+                comprar(cliente, versao(jogos.get(dados.compras().get(i)), dados.plataformas()), 8 - 2 * i);
             }
             PreferenciaCliente preferencia = new PreferenciaCliente(cliente.getId());
             preferencia.atualizar(dados.generos(), dados.plataformas(),
@@ -153,7 +152,8 @@ public class CargaAssistente implements ApplicationRunner {
         avaliada(perfil, diasAtras - 7, "Quais jogos de " + genero + " vocês têm?",
                 redacao.busca(genero, catalogo.stream().filter(j -> j.genero().equals(genero)).toList(), perfil), AvaliacaoResposta.UTIL);
         avaliada(perfil, diasAtras - 14, "Me fala mais sobre o " + recomendacoes.get(0).jogo().titulo(),
-                redacao.sobreJogo(recomendacoes.get(0).jogo()), AvaliacaoResposta.UTIL);
+                redacao.sobreJogo(recomendacoes.get(0).jogo(), versoes(catalogo, recomendacoes.get(0).jogo().titulo()), perfil),
+                AvaliacaoResposta.UTIL);
         if (perfil.orcamento() != null) {
             avaliada(perfil, diasAtras - 21, "Tem alguma coisa até " + PerfilRecomendacaoService.moeda(perfil.orcamento()) + "?",
                     redacao.orcamento(perfil.orcamento(), perfis.recomendar(perfil, catalogo.stream()
@@ -182,6 +182,15 @@ public class CargaAssistente implements ApplicationRunner {
         LocalDateTime quando = LocalDateTime.now().minusDays(diasAtras).withHour(19).withMinute(30);
         mensagem.definirDatas(quando, quando.plusMinutes(2));
         mensagemRepository.save(mensagem);
+    }
+
+    private static List<JogoCatalogo> versoes(List<JogoCatalogo> catalogo, String titulo) {
+        return catalogo.stream().filter(j -> j.titulo().equals(titulo)).toList();
+    }
+
+    /** A versão do jogo na plataforma do cliente (o jogo pode sair para várias). */
+    private static Jogo versao(List<Jogo> versoes, List<String> plataformas) {
+        return versoes.stream().filter(j -> plataformas.contains(j.getPlataforma())).findFirst().orElse(versoes.get(0));
     }
 
     private void comprar(Cliente c, Jogo jogo, int mesesAtras) {

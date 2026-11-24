@@ -18,12 +18,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,6 +84,18 @@ public class PerfilRecomendacaoService {
             if (!generosPreferidos.isEmpty()) return generosPreferidos.iterator().next();
             return generosComprados.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
         }
+
+        /** O mesmo perfil com outras plataformas (o cliente pediu uma plataforma na mensagem). */
+        public PerfilCliente comPlataformas(Set<String> plataformas) {
+            return new PerfilCliente(clienteId, nome, idade, compras, generosComprados, plataformasCompradas, generosPreferidos,
+                    plataformas, orcamento, observacoes, jogosNaoUteis, jogosUteis);
+        }
+
+        /** O mesmo perfil com outro limite de preço (o valor que o cliente pediu na mensagem vale mais que o do perfil). */
+        public PerfilCliente comOrcamento(BigDecimal limite) {
+            return new PerfilCliente(clienteId, nome, idade, compras, generosComprados, plataformasCompradas, generosPreferidos,
+                    plataformasPreferidas, limite, observacoes, jogosNaoUteis, jogosUteis);
+        }
     }
 
     public record Recomendacao(JogoCatalogo jogo, double pontuacao, List<String> motivos) {}
@@ -94,15 +108,17 @@ public class PerfilRecomendacaoService {
     private final JogoRepository jogoRepository;
     private final PreferenciaClienteRepository preferenciaRepository;
     private final MensagemAssistenteRepository mensagemRepository;
+    private final EstilosDeJogo estilos;
 
     public PerfilRecomendacaoService(ClienteRepository clienteRepository, PedidoRepository pedidoRepository,
                                      JogoRepository jogoRepository, PreferenciaClienteRepository preferenciaRepository,
-                                     MensagemAssistenteRepository mensagemRepository) {
+                                     MensagemAssistenteRepository mensagemRepository, EstilosDeJogo estilos) {
         this.clienteRepository = clienteRepository;
         this.pedidoRepository = pedidoRepository;
         this.jogoRepository = jogoRepository;
         this.preferenciaRepository = preferenciaRepository;
         this.mensagemRepository = mensagemRepository;
+        this.estilos = estilos;
     }
 
     @Transactional(readOnly = true)
@@ -177,7 +193,8 @@ public class PerfilRecomendacaoService {
         List<Recomendacao> resultado = new ArrayList<>();
 
         for (JogoCatalogo jogo : catalogo) {
-            if (comprados.contains(jogo.titulo()) || !classificacaoPermitida(jogo.classificacao(), perfil.idade())) continue;
+            if (comprados.contains(jogo.titulo()) || !classificacaoPermitida(jogo.classificacao(), perfil.idade())
+                    || !daPlataformaDoCliente(jogo, perfil) || !cabeNoOrcamento(jogo, perfil)) continue;
             double pontos = 0;
             List<String> motivos = new ArrayList<>();
 
@@ -210,7 +227,6 @@ public class PerfilRecomendacaoService {
 
             if (perfil.jogosNaoUteis().contains(jogo.titulo())) pontos -= 4; // feedback negativo no chat
             if (perfil.jogosUteis().contains(jogo.titulo())) pontos += 0.5;
-            if (perfil.orcamento() != null && jogo.preco().compareTo(perfil.orcamento()) > 0) pontos -= 3;
             if (motivos.isEmpty() && totalComprado == 0) {
                 int vendidos = vendas.vendasPorJogo().getOrDefault(jogo.titulo(), 0);
                 if (vendidos > 0) {
@@ -224,7 +240,22 @@ public class PerfilRecomendacaoService {
         resultado.sort(Comparator.comparingDouble(Recomendacao::pontuacao).reversed()
                 .thenComparing(r -> -vendas.vendasPorJogo().getOrDefault(r.jogo().titulo(), 0))
                 .thenComparing(r -> r.jogo().titulo()));
-        return resultado.subList(0, Math.min(quantidade, resultado.size()));
+        // o mesmo jogo em duas plataformas do cliente: fica só a versão mais bem pontuada
+        Set<String> vistos = new HashSet<>();
+        return resultado.stream().filter(r -> vistos.add(r.jogo().titulo())).limit(quantidade).toList();
+    }
+
+    /**
+     * Quem marcou plataformas no perfil só recebe jogos delas (um jogo de outra plataforma ele não tem como
+     * jogar). Sem plataforma marcada, vale qualquer uma; o histórico de compras pesa na pontuação.
+     */
+    public static boolean daPlataformaDoCliente(JogoCatalogo jogo, PerfilCliente perfil) {
+        return perfil.plataformasPreferidas().isEmpty() || perfil.plataformasPreferidas().contains(jogo.plataforma());
+    }
+
+    /** O orçamento por jogo do perfil é um limite: acima dele o jogo não é recomendado. */
+    public static boolean cabeNoOrcamento(JogoCatalogo jogo, PerfilCliente perfil) {
+        return perfil.orcamento() == null || jogo.preco().compareTo(perfil.orcamento()) <= 0;
     }
 
     /**
@@ -242,10 +273,17 @@ public class PerfilRecomendacaoService {
                 use tópicos ao listar jogos).
                 - Recomende e cite preços apenas de jogos do CATÁLOGO abaixo, com título, plataforma e preço. \
                 Não invente jogos, preços, estoque ou promoções da loja.
-                - Use o PERFIL DO CLIENTE: priorize os gêneros e plataformas preferidos e o histórico de compras. \
+                - Use o PERFIL DO CLIENTE: priorize os gêneros preferidos e o histórico de compras. \
                 Não recomende um jogo que o cliente já comprou, a menos que ele pergunte sobre esse jogo.
-                - Respeite o orçamento informado e a classificação indicativa compatível com a idade do cliente. \
+                - Se o cliente informou plataformas, recomende só jogos que saem para elas e cite só as plataformas \
+                que estão nas preferências dele; \
+                jogo de outra plataforma, só se ele pedir. O CATÁLOGO mostra só as plataformas do cliente; se ele pedir \
+                outra, use o bloco JOGOS PARA A PLATAFORMA PEDIDA.
+                - Respeite a classificação indicativa compatível com a idade do cliente.
+                - O orçamento do perfil é o preço máximo por jogo: não recomende jogo acima dele. \
                 Se houver o bloco JOGOS DENTRO DO VALOR PEDIDO, recomende só os jogos desse bloco.
+                - Se o cliente pedir um gênero e houver o bloco JOGOS DO GÊNERO PEDIDO, recomende só os jogos desse bloco; \
+                se ele disser que não há nenhum, diga isso ao cliente e não cite outro jogo desse gênero.
                 - Evite os jogos que o cliente já marcou como recomendação não útil.
                 - Ao recomendar, prefira as SUGESTÕES PARA ESTE CLIENTE, que vêm do histórico de vendas da loja.
                 - Quando o cliente descrever o tipo de jogo que quer (criar coisas, relaxar, jogar com amigos, sentir medo...), \
@@ -257,12 +295,22 @@ public class PerfilRecomendacaoService {
                 - Assuntos que não sejam jogos ou a loja (geografia, escola, receitas, política, clima...): NÃO responda \
                 o conteúdo da pergunta; explique com educação que você só ajuda com jogos e ofereça uma recomendação.
 
-                CATÁLOGO (jogos com estoque: título | plataforma | gênero | classificação | preço | características):
+                CATÁLOGO (jogos com estoque: título | plataformas | gênero | classificação | preço | destaques):
                 """);
-        for (JogoCatalogo jogo : catalogo) {
-            texto.append("- ").append(jogo.titulo()).append(" | ").append(jogo.plataforma()).append(" | ").append(jogo.genero())
-                    .append(" | ").append(jogo.classificacao()).append(" | ").append(moeda(jogo.preco()));
-            if (jogo.caracteristicas() != null) texto.append(" | ").append(jogo.caracteristicas());
+        // uma linha por jogo; quem marcou plataformas vê só os jogos delas (o prompt fica bem menor e o
+        // treino cabe no tempo da CPU). Outra plataforma pedida na mensagem vem no bloco do pedido.
+        List<String> todas = catalogo.stream().map(JogoCatalogo::plataforma).distinct().sorted().toList();
+        if (perfil.plataformasPreferidas().isEmpty()) texto.append("(\"todas\" = ").append(String.join(", ", todas)).append(")\n");
+        Map<String, List<JogoCatalogo>> versoes = catalogo.stream()
+                .filter(j -> daPlataformaDoCliente(j, perfil))
+                .collect(Collectors.groupingBy(JogoCatalogo::titulo, LinkedHashMap::new, Collectors.toList()));
+        for (List<JogoCatalogo> doJogo : versoes.values()) {
+            JogoCatalogo jogo = doJogo.get(0);
+            String plataformas = plataformas(doJogo);
+            texto.append("- ").append(jogo.titulo()).append(" | ").append(plataformas.equals(String.join(", ", todas)) ? "todas" : plataformas)
+                    .append(" | ").append(jogo.genero())
+                    .append(" | ").append(jogo.classificacao()).append(" | ").append(precos(doJogo));
+            if (jogo.caracteristicas() != null) texto.append(" | ").append(destaques(jogo.caracteristicas()));
             texto.append('\n');
         }
 
@@ -295,13 +343,158 @@ public class PerfilRecomendacaoService {
 
         List<Recomendacao> sugestoes = recomendar(perfil, catalogo, vendas, 5);
         texto.append("\n\nSUGESTÕES PARA ESTE CLIENTE (da mais para a menos indicada):");
-        if (sugestoes.isEmpty()) texto.append("\n- nenhuma ainda: pergunte do que ele gosta");
+        if (sugestoes.isEmpty() && perfil.orcamento() != null) {
+            texto.append("\n- nenhum jogo").append(restricoes(perfil))
+                    .append(" combina com o perfil: diga isso e pergunte se ele aceita um valor maior");
+        } else if (sugestoes.isEmpty()) {
+            texto.append("\n- nenhuma ainda: pergunte do que ele gosta");
+        }
         for (Recomendacao r : sugestoes) {
             texto.append("\n- ").append(r.jogo().titulo()).append(" (").append(r.jogo().plataforma()).append(", ")
                     .append(r.jogo().genero()).append(", ").append(moeda(r.jogo().preco())).append("): ")
                     .append(String.join("; ", r.motivos()));
         }
+        // nenhuma sugestão dos gêneros preferidos: o modelo precisa saber o porquê para avisar o cliente
+        if (!sugestoes.isEmpty() && !perfil.generosPreferidos().isEmpty()
+                && sugestoes.stream().noneMatch(r -> perfil.generosPreferidos().contains(r.jogo().genero()))) {
+            texto.append("\nObservação: não há jogo de ").append(String.join(" ou ", perfil.generosPreferidos()))
+                    .append(restricoes(perfil)).append(" que ele ainda não tenha; avise isso antes de sugerir as opções acima.");
+        }
         return texto.toString();
+    }
+
+    /** " até R$ 100,00 para Xbox Series X|S": os limites do perfil, para explicar por que não há jogo. */
+    private static String restricoes(PerfilCliente perfil) {
+        return (perfil.orcamento() == null ? "" : " até " + moeda(perfil.orcamento()))
+                + (perfil.plataformasPreferidas().isEmpty() ? "" : " para " + String.join(" ou ", perfil.plataformasPreferidas()));
+    }
+
+    /**
+     * Instrução de sistema para uma mensagem do cliente: a base mais os blocos do pedido (estilo, valor e
+     * gênero), com os jogos já filtrados pelo perfil. É a mesma no chat e nos exemplos do ajuste fino.
+     */
+    public String comBlocosDoPedido(String instrucao, String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo,
+                                    DadosVendas vendas) {
+        // "tem algo para o Switch?": os blocos usam a plataforma pedida no lugar das do perfil
+        Set<String> pedidas = plataformasDoPedido(mensagem, catalogo);
+        PerfilCliente efetivo = pedidas.isEmpty() ? perfil : perfil.comPlataformas(pedidas);
+        String blocos = estilos.blocoDoPedido(mensagem, efetivo, catalogo) + blocoOrcamento(mensagem, efetivo, catalogo, vendas)
+                + blocoGenero(mensagem, efetivo, catalogo, vendas);
+        if (!pedidas.isEmpty() && !perfil.plataformasPreferidas().containsAll(pedidas)) {
+            blocos += blocoPlataforma(efetivo, catalogo, vendas);
+        }
+        return instrucao + blocos;
+    }
+
+    /** Plataformas citadas na mensagem ("pro Switch", "no PC", "de PS5"). */
+    public static Set<String> plataformasDoPedido(String mensagem, List<JogoCatalogo> catalogo) {
+        String texto = semAcento(mensagem == null ? "" : mensagem);
+        Set<String> pedidas = new LinkedHashSet<>();
+        for (String plataforma : catalogo.stream().map(JogoCatalogo::plataforma).distinct().sorted().toList()) {
+            String regex = switch (plataforma) {
+                case "PC" -> "\\b(pc|computador)\\b";
+                case "Nintendo Switch" -> "\\b(switch|nintendo)\\b";
+                case "PlayStation 5" -> "\\b(playstation|ps5|ps 5)\\b";
+                case "Xbox Series X|S" -> "\\bxbox\\b";
+                default -> "\\b" + Pattern.quote(semAcento(plataforma)) + "\\b";
+            };
+            if (Pattern.compile(regex).matcher(texto).find()) pedidas.add(plataforma);
+        }
+        return pedidas;
+    }
+
+    /** Bloco com os jogos indicados na plataforma que o cliente pediu e que não está no perfil dele. */
+    private String blocoPlataforma(PerfilCliente efetivo, List<JogoCatalogo> catalogo, DadosVendas vendas) {
+        String plataformas = String.join(" ou ", efetivo.plataformasPreferidas());
+        List<Recomendacao> jogos = recomendarOuMaisVendidos(efetivo, catalogo, vendas, 5);
+        StringBuilder texto = new StringBuilder("\n\nJOGOS PARA A PLATAFORMA PEDIDA (").append(plataformas).append("):");
+        if (jogos.isEmpty()) texto.append("\n- nenhum jogo").append(restricoes(efetivo)).append(" que o cliente ainda não tenha");
+        for (Recomendacao r : jogos) {
+            texto.append("\n- ").append(r.jogo().titulo()).append(" (").append(r.jogo().plataforma()).append(", ")
+                    .append(r.jogo().genero()).append(", ").append(moeda(r.jogo().preco())).append("): ")
+                    .append(String.join("; ", r.motivos()));
+        }
+        return texto.toString();
+    }
+
+    /** Recomendações da plataforma; se nada pontua (gênero fora do gosto), os mais vendidos dela que respeitam o perfil. */
+    public List<Recomendacao> recomendarOuMaisVendidos(PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas, int quantidade) {
+        List<Recomendacao> indicados = recomendar(perfil, catalogo, vendas, quantidade);
+        if (!indicados.isEmpty()) return indicados;
+        Set<String> vistos = new HashSet<>();
+        return catalogo.stream()
+                .filter(j -> !perfil.titulosComprados().contains(j.titulo()))
+                .filter(j -> classificacaoPermitida(j.classificacao(), perfil.idade()))
+                .filter(j -> daPlataformaDoCliente(j, perfil) && cabeNoOrcamento(j, perfil))
+                .sorted(Comparator.comparing((JogoCatalogo j) -> -vendas.vendasPorJogo().getOrDefault(j.titulo(), 0))
+                        .thenComparing(JogoCatalogo::titulo))
+                .filter(j -> vistos.add(j.titulo()))
+                .limit(quantidade)
+                .map(j -> new Recomendacao(j, 0, List.of("sai para " + j.plataforma())))
+                .toList();
+    }
+
+    /** As 3 primeiras características: o resto não muda a escolha e deixa o prompt (e o treino) bem mais longo. */
+    private static String destaques(String caracteristicas) {
+        String[] partes = caracteristicas.split(",\\s*");
+        return String.join(", ", java.util.Arrays.copyOf(partes, Math.min(3, partes.length)));
+    }
+
+    /** Gênero do catálogo citado na mensagem ("quero um jogo de corrida", "tem RPG?"), se houver. */
+    public static String generoDoPedido(String mensagem, List<JogoCatalogo> catalogo) {
+        if (mensagem == null) return null;
+        String texto = semAcento(mensagem);
+        for (String genero : catalogo.stream().map(JogoCatalogo::genero).distinct().sorted().toList()) {
+            String nome = Pattern.quote(semAcento(genero));
+            // "plataforma" e "festa" também são palavras comuns ("minhas plataformas", "festa com amigos"):
+            // só contam como gênero em "jogo de plataforma", "jogos de festa"
+            String regex = genero.equals("Plataforma") || genero.equals("Festa")
+                    ? "\\b(?:de|do|da)\\s+" + nome + "s?\\b" : "\\b" + nome + "s?\\b";
+            if (Pattern.compile(regex).matcher(texto).find()) return genero;
+        }
+        return null;
+    }
+
+    /**
+     * Bloco do prompt com os jogos do gênero pedido que servem para o cliente (plataformas, orçamento, idade e o
+     * que ele ainda não tem). Vazio quando a mensagem não cita gênero.
+     */
+    public String blocoGenero(String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas) {
+        String genero = generoDoPedido(mensagem, catalogo);
+        if (genero == null) return "";
+        List<Recomendacao> jogos = doGenero(perfil, catalogo, vendas, genero);
+        StringBuilder texto = new StringBuilder("\n\nJOGOS DO GÊNERO PEDIDO (").append(genero).append(", dentro do perfil do cliente):");
+        if (jogos.isEmpty()) {
+            texto.append("\n- nenhum jogo de ").append(genero).append(restricoes(perfil))
+                    .append(" que o cliente ainda não tenha: diga isso e pergunte se ele aceita outro valor, outra plataforma ou outro gênero");
+        }
+        for (Recomendacao r : jogos) {
+            texto.append("\n- ").append(r.jogo().titulo()).append(" (").append(r.jogo().plataforma()).append(", ")
+                    .append(moeda(r.jogo().preco())).append("): ").append(String.join("; ", r.motivos()));
+        }
+        return texto.toString();
+    }
+
+    /** Até 3 jogos do gênero que servem para o cliente, do mais para o menos indicado. */
+    public List<Recomendacao> doGenero(PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas, String genero) {
+        List<JogoCatalogo> doGenero = catalogo.stream().filter(j -> j.genero().equals(genero)).toList();
+        List<Recomendacao> indicados = recomendar(perfil, doGenero, vendas, 3);
+        if (!indicados.isEmpty()) return indicados;
+        // gênero fora do gosto dele: vale qualquer jogo do gênero que respeite o perfil
+        Set<String> vistos = new HashSet<>();
+        return doGenero.stream()
+                .filter(j -> !perfil.titulosComprados().contains(j.titulo()))
+                .filter(j -> classificacaoPermitida(j.classificacao(), perfil.idade()))
+                .filter(j -> daPlataformaDoCliente(j, perfil) && cabeNoOrcamento(j, perfil))
+                .sorted(Comparator.comparing(JogoCatalogo::preco).thenComparing(JogoCatalogo::titulo))
+                .filter(j -> vistos.add(j.titulo()))
+                .limit(3)
+                .map(j -> new Recomendacao(j, 0, List.of("é de " + genero + ", o gênero que você pediu")))
+                .toList();
+    }
+
+    private static String semAcento(String texto) {
+        return Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
     }
 
     /** Valor pedido na mensagem ("tem algo até R$ 150?", "menos de 100 reais"), se houver. */
@@ -334,15 +527,30 @@ public class PerfilRecomendacaoService {
      */
     public List<Recomendacao> dentroDoValor(PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas, BigDecimal limite) {
         List<JogoCatalogo> cabem = catalogo.stream().filter(j -> j.preco().compareTo(limite) <= 0).toList();
-        List<Recomendacao> doPerfil = recomendar(perfil, cabem, vendas, 3);
+        // o valor pedido na mensagem substitui o orçamento do perfil (o cliente pode pedir mais ou menos)
+        List<Recomendacao> doPerfil = recomendar(perfil.comOrcamento(limite), cabem, vendas, 3);
         if (!doPerfil.isEmpty()) return doPerfil;
+        Set<String> vistos = new HashSet<>();
         return cabem.stream()
                 .filter(j -> !perfil.titulosComprados().contains(j.titulo()))
                 .filter(j -> classificacaoPermitida(j.classificacao(), perfil.idade()))
+                .filter(j -> daPlataformaDoCliente(j, perfil))
                 .sorted(Comparator.comparing(JogoCatalogo::preco).thenComparing(JogoCatalogo::titulo))
+                .filter(j -> vistos.add(j.titulo()))
                 .limit(3)
                 .map(j -> new Recomendacao(j, 0, List.of("é de " + j.genero() + " e cabe no valor que você pediu")))
                 .toList();
+    }
+
+    /** "PC, Nintendo Switch": as plataformas em que o jogo está à venda. */
+    public static String plataformas(List<JogoCatalogo> versoes) {
+        return versoes.stream().map(JogoCatalogo::plataforma).distinct().sorted().collect(Collectors.joining(", "));
+    }
+
+    /** Um preço só quando todas as versões custam o mesmo; senão, o preço de cada plataforma. */
+    public static String precos(List<JogoCatalogo> versoes) {
+        if (versoes.stream().map(JogoCatalogo::preco).distinct().count() == 1) return moeda(versoes.get(0).preco());
+        return versoes.stream().map(j -> j.plataforma() + " " + moeda(j.preco())).collect(Collectors.joining(", "));
     }
 
     public static String moeda(BigDecimal valor) {

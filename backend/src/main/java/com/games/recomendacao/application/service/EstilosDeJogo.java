@@ -6,9 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -126,12 +128,16 @@ public class EstilosDeJogo {
 
     /** Jogos do catálogo para o estilo, do que mais combina para o que menos, respeitando o perfil. */
     public List<JogoCatalogo> jogosPara(Estilo estilo, PerfilCliente perfil, List<JogoCatalogo> catalogo, int quantidade) {
+        Set<String> vistos = new HashSet<>();
         return catalogo.stream()
                 .filter(j -> !j.caracteristicasCom(estilo.palavras()).isEmpty())
                 .filter(j -> !perfil.titulosComprados().contains(j.titulo()))
                 .filter(j -> PerfilRecomendacaoService.classificacaoPermitida(j.classificacao(), perfil.idade()))
+                .filter(j -> PerfilRecomendacaoService.daPlataformaDoCliente(j, perfil))
+                .filter(j -> PerfilRecomendacaoService.cabeNoOrcamento(j, perfil))
                 .filter(j -> !estilo.soInfantil() || j.classificacao().equalsIgnoreCase("L") || j.classificacao().equals("10"))
                 .sorted(Comparator.comparingDouble((JogoCatalogo j) -> -pontos(j, estilo, perfil)).thenComparing(JogoCatalogo::titulo))
+                .filter(j -> vistos.add(j.titulo())) // o mesmo jogo em duas plataformas do cliente aparece uma vez
                 .limit(quantidade)
                 .toList();
     }
@@ -140,7 +146,6 @@ public class EstilosDeJogo {
         double pontos = jogo.caracteristicasCom(estilo.palavras()).size() * 2.0;
         if (perfil.plataformasPreferidas().contains(jogo.plataforma())) pontos += 1;
         if (perfil.generosPreferidos().contains(jogo.genero())) pontos += 0.5;
-        if (perfil.orcamento() != null && jogo.preco().compareTo(perfil.orcamento()) > 0) pontos -= 1;
         return pontos;
     }
 }
