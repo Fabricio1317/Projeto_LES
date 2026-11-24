@@ -109,10 +109,23 @@ public class ContinuacaoConversa {
         if (texto.split("\\s+").length > MAXIMO_DE_PALAVRAS_DO_REFINAMENTO) return null;
         // "me recomenda um jogo até R$ 100" é um pedido novo, de qualquer gênero
         if (texto.matches(".*\\b(um jogo|algum jogo|qualquer|outro genero)\\b.*")) return null;
-        if (PerfilRecomendacaoService.generoDoPedido(mensagem, catalogo) != null) return null;
         if (catalogo.stream().map(JogoCatalogo::titulo).distinct().anyMatch(t -> PerfilRecomendacaoService.citaTituloAproximado(mensagem, t))) return null;
         var plataformas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
         BigDecimal valor = PerfilRecomendacaoService.valorDoPedido(mensagem);
+        String generoDaMensagem = PerfilRecomendacaoService.generoDoPedido(mensagem, catalogo);
+
+        // "me mostra o produto mais barato" → "e de PC?" / "e de corrida?": a mesma pergunta da loja, com o filtro novo
+        if (perguntaAnterior != null && PerguntasDoCatalogo.tipo(perguntaAnterior, catalogo) != null
+                && PerguntasDoCatalogo.tipo(mensagem, catalogo) == null
+                && (generoDaMensagem != null || !plataformas.isEmpty() || valor != null)) {
+            return perguntaAnterior.replaceAll("[?.!\\s]+$", "")
+                    + (generoDaMensagem == null ? "" : " de " + generoDaMensagem)
+                    + (plataformas.isEmpty() ? "" : " para " + String.join(" ou ", plataformas))
+                    + (valor == null ? "" : " até R$ " + valor.stripTrailingZeros().toPlainString().replace('.', ','))
+                    + "?";
+        }
+
+        if (generoDaMensagem != null) return null;
         if (plataformas.isEmpty() && valor == null) return null;
 
         String genero = perguntaAnterior == null ? null : PerfilRecomendacaoService.generoDoPedido(perguntaAnterior, catalogo);

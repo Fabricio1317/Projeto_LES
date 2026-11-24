@@ -43,13 +43,15 @@ public class AssistenteService {
     private final ClienteRepository clienteRepository;
     private final ConferenciaResposta conferencia;
     private final ContinuacaoConversa continuacao;
+    private final PerguntasDoCatalogo perguntas;
 
     public AssistenteService(PerfilRecomendacaoService perfis, TreinamentoService treinamentos, IaGenerativa ia,
                              MensagemAssistenteRepository mensagemRepository, ClienteRepository clienteRepository,
-                             ConferenciaResposta conferencia, ContinuacaoConversa continuacao) {
+                             ConferenciaResposta conferencia, ContinuacaoConversa continuacao, PerguntasDoCatalogo perguntas) {
         this.perfis = perfis;
         this.conferencia = conferencia;
         this.continuacao = continuacao;
+        this.perguntas = perguntas;
         this.treinamentos = treinamentos;
         this.ia = ia;
         this.mensagemRepository = mensagemRepository;
@@ -88,7 +90,8 @@ public class AssistenteService {
         // pedido por estilo ("quero criar coisas..."), valor ("até R$ 150") ou gênero ("um jogo de corrida"):
         // os jogos que servem para o cliente vão destacados no prompt
         DadosVendas vendas = perfis.dadosVendas();
-        String instrucao = perfis.comBlocosDoPedido(perfis.instrucaoSistema(perfil, catalogo, vendas), pedido, perfil, catalogo, vendas);
+        String instrucao = perfis.comBlocosDoPedido(perfis.instrucaoSistema(perfil, catalogo, vendas), pedido, perfil, catalogo, vendas)
+                + perguntas.bloco(pedido, perfil, catalogo, vendas); // "o mais barato", "os mais vendidos": os dados certos
         Optional<TreinamentoModelo> emUso = treinamentos.modeloEmUso();
         String resposta = ia.responder(emUso.map(TreinamentoModelo::getModeloAjustado).orElse(null), instrucao, turnos);
         String modelo = emUso.map(t -> t.getNomeModelo() + " (ajuste fino de " + t.getModeloBase() + ")")

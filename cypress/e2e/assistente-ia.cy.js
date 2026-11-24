@@ -589,6 +589,76 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
       });
     });
 
+    const reais = (valor) => `R$ ${Number(valor).toFixed(2).replace(".", ",")}`;
+
+    it("RNF0044 — responde perguntas sobre a loja com os dados do catálogo: mais barato, mais caro, por empresa e quantidade", () => {
+      catalogo().then((jogos) => clienteCom({ generos: ["Corrida"], plataformas: ["Xbox Series X|S"] }).then((cliente) => {
+        const corridaXbox = jogos.filter((j) => j.genero === "Corrida" && j.plataforma === "Xbox Series X|S" && j.estoque > 0);
+        const menor = Math.min(...corridaXbox.map((j) => j.preco));
+        const maior = Math.max(...corridaXbox.map((j) => j.preco));
+        const maisBaratos = corridaXbox.filter((j) => j.preco === menor).map((j) => j.titulo);
+        const maisCaros = corridaXbox.filter((j) => j.preco === maior).map((j) => j.titulo);
+        const capcomNoXbox = [...new Set(jogos.filter((j) => j.desenvolvedora === "Capcom" && j.plataforma === "Xbox Series X|S")
+          .map((j) => j.titulo))];
+
+        conversar(cliente.id, ["me mostra o seu jogo de corrida mais barato", "e o mais caro de corrida?",
+          "quais jogos da Capcom vocês têm?", "quantos jogos vocês têm?"]).then(([barato, caro, capcom, quantos]) => {
+          expect(maisBaratos.some((t) => barato.includes(t)), `cita o mais barato (${maisBaratos.join(", ")})`).to.eq(true);
+          expect(barato).to.contain(reais(menor));
+          expect(maisCaros.some((t) => caro.includes(t)), `cita o mais caro (${maisCaros.join(", ")})`).to.eq(true);
+          expect(caro).to.contain(reais(maior));
+          expect(capcomNoXbox, "a Capcom tem jogos no Xbox").to.not.be.empty;
+          capcomNoXbox.forEach((t) => expect(capcom, `${t} é da Capcom`).to.contain(t));
+          // o total de títulos do catálogo (a divisão por plataforma é opcional na resposta)
+          const total = Number((quantos.match(/(\d+) jogos/) || [])[1]);
+          expect(total, "total de jogos do catálogo").to.be.at.least(120);
+        });
+      }));
+    });
+
+    it("RNF0044 — continua a pergunta da loja (\"o mais barato\" → \"e de PC?\") e responde os mais vendidos", () => {
+      cy.request(`${API}/jogos`).its("body").then((todos) => clienteCom({ generos: ["Puzzle"], plataformas: ["Nintendo Switch"] })
+        .then((cliente) => {
+          const doPc = todos.filter((j) => j.plataforma === "PC" && j.estoque > 0);
+          const menor = Math.min(...doPc.map((j) => j.preco));
+          const maisBaratosDoPc = doPc.filter((j) => j.preco === menor).map((j) => j.titulo);
+          conversar(cliente.id, ["me mostra o seu produto mais barato", "e de PC?", "o que está fazendo sucesso na loja?"])
+            .then(([, dePc, sucesso]) => {
+              expect(maisBaratosDoPc.some((t) => dePc.includes(t)), `o mais barato do PC (${maisBaratosDoPc.join(", ")})`).to.eq(true);
+              expect(dePc).to.contain(reais(menor)).and.contain("PC");
+              expect(sucesso).to.match(/vendid|sucesso|popular/i).and.not.contain(RECUSA);
+              expect(todos.some((j) => sucesso.includes(j.titulo)), "os mais vendidos citam jogos do catálogo").to.eq(true);
+              // o gênero dito de cada jogo é o do catálogo (a IA já chamou o Hogwarts Legacy, de Aventura, de RPG)
+              todos.filter((j) => sucesso.includes(`**${j.titulo}**`)).forEach((j) => {
+                const linha = sucesso.split("\n").find((l) => l.includes(`**${j.titulo}**`));
+                ["RPG", "Corrida", "Esporte", "Luta", "Terror", "Tiro"].filter((g) => g !== j.genero)
+                  .forEach((g) => expect(linha, `${j.titulo} é de ${j.genero}`).to.not.match(new RegExp(`\\b${g}\\b`)));
+              });
+            });
+        }));
+    });
+
+    it("RNF0044 — responde pedidos fora do comum: jogar no banho, o melhor jogo de um gênero e carro de verdade", () => {
+      catalogo().then((jogos) => clienteCom({ generos: ["Corrida"], plataformas: ["Xbox Series X|S"] }).then((cliente) => {
+        const titulosDe = (g) => [...new Set(jogos.filter((j) => j.genero === g && j.plataforma === "Xbox Series X|S").map((j) => j.titulo))];
+        conversar(cliente.id, ["qual melhor jogo para mim quando estou tomando banho?", "me liste o melhor jogo de luta",
+          "quando eu jogo nidhogg 2 qual seria o melhor carro para eu comprar?", "qual o melhor carro no Forza Horizon 5?"])
+          .then(([banho, luta, carro, forza]) => {
+          // no banho não dá, mas sugere jogos para depois
+          expect(banho).to.contain("banho").and.not.contain(RECUSA);
+          expect(citados(banho, jogos), "sugere jogos para depois do banho").to.not.be.empty;
+          // "o melhor jogo de luta" é um pedido de recomendação do gênero
+          expect(titulosDe("Luta").some((t) => luta.includes(t)), "cita um jogo de Luta").to.eq(true);
+          // o Nidhogg 2 é de Luta (duelos de espada): não tem carros; carro de verdade não é com a loja, mas quem
+          // curte carros pode gostar dos jogos de corrida
+          expect(carro).to.contain("Nidhogg 2").and.contain("Luta").and.contain("não tem carros").and.contain("só ajudo com jogos");
+          expect(titulosDe("Corrida").some((t) => carro.includes(t)), "liga carros aos jogos de corrida").to.eq(true);
+          // o Forza Horizon 5 tem carros (o catálogo cita "centenas de carros"): a resposta fala do jogo
+          expect(forza).to.contain("Forza Horizon 5").and.contain("carros fazem parte do jogo").and.not.contain("não tem carros");
+        });
+      }));
+    });
+
     it("RNF0044 — com 4 gêneros marcados, a recomendação da IA traz um jogo de cada gênero", () => {
       const generos = ["Ação", "Puzzle", "Terror", "Corrida"];
       catalogo().then((jogos) => clienteCom({ generos, plataformas: ["PlayStation 5"] }).then((cliente) => {

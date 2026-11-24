@@ -156,6 +156,57 @@ public class RedacaoRespostas {
                 + "\nQuer que eu conte mais sobre algum deles?";
     }
 
+    /** "Qual o melhor jogo para quando estou tomando banho?": não dá, mas sugere para depois. */
+    public String situacao(PerfilCliente perfil, PedidosIncomuns.Pedido pedido, List<Recomendacao> recomendacoes) {
+        String inicio = "Jogar " + pedido.descricao() + " não dá, " + perfil.primeiroNome() + ": " + pedido.motivo() + ".";
+        if (recomendacoes.isEmpty()) return inicio + " Mas me conta do que você gosta que eu te indico algo para jogar com calma.";
+        return inicio + " Mas, " + pedido.depois() + ", estes combinam com você:\n" + listar(recomendacoes)
+                + "\nQuer que eu conte mais sobre algum deles?";
+    }
+
+    /**
+     * "Qual o melhor carro para eu comprar?": isso o assistente não sabe, mas liga o assunto a um gênero de jogo
+     * ("se você curte carros, estes jogos de corrida...") e, se a mensagem citou um jogo, oferece falar dele.
+     */
+    public String vidaReal(PerfilCliente perfil, PedidosIncomuns.Pedido pedido, List<Recomendacao> doGenero, String jogoCitado) {
+        String inicio = "Isso eu não sei te indicar, " + perfil.primeiroNome() + ": aqui eu só ajudo com jogos e com a loja Nexus.";
+        String sobreOJogo = jogoCitado == null ? "" : " Se quiser, também te conto mais sobre o **" + jogoCitado + "**.";
+        if (pedido.genero() == null || doGenero.isEmpty()) {
+            return inicio + sobreOJogo + (jogoCitado == null ? " Quer que eu te recomende um jogo?" : "");
+        }
+        return inicio + " Mas, se você curte " + pedido.tema() + ", estes jogos de " + pedido.genero() + " combinam com você:\n"
+                + listar(doGenero) + "\nQuer que eu conte mais sobre algum deles?" + sobreOJogo;
+    }
+
+    /**
+     * "Quando eu jogo Nidhogg 2, qual o melhor carro para eu comprar?": diz, com os dados do catálogo, se o jogo tem
+     * aquilo ("O Nidhogg 2 é um jogo de Luta (duelos rápidos...): nele não tem carros"), avisa que a dúvida da vida
+     * real não é com a loja e, se o jogo não tem, mostra os jogos do gênero que combinam com o assunto.
+     */
+    public String objetoNoJogo(PerfilCliente perfil, JogoCatalogo jogo, PedidosIncomuns.Objeto objeto, boolean temNoJogo,
+                               List<Recomendacao> doGenero) {
+        String descricao = "**" + jogo.titulo() + "** é um jogo de " + jogo.genero()
+                + (jogo.caracteristicas() == null ? "" : " (" + jogo.caracteristicas() + ")");
+        StringBuilder texto = new StringBuilder();
+        if (temNoJogo) {
+            texto.append("O ").append(descricao).append(": os ").append(objeto.plural())
+                    .append(" fazem parte do jogo, mas eu não tenho os detalhes de cada um.");
+        } else {
+            texto.append("O ").append(descricao).append(": nele não tem ").append(objeto.plural()).append('.');
+        }
+        if (objeto.vidaReal()) {
+            texto.append(" E ").append(objeto.singular()).append(" de verdade eu não sei te indicar, ").append(perfil.primeiroNome())
+                    .append(": aqui eu só ajudo com jogos e com a loja Nexus.");
+        }
+        if (!temNoJogo && !doGenero.isEmpty()) {
+            texto.append(" Mas, se você curte ").append(objeto.tema()).append(", estes jogos de ").append(objeto.genero())
+                    .append(" combinam com você:\n").append(listar(doGenero)).append("\nQuer que eu conte mais sobre algum deles?");
+        } else {
+            texto.append(" Quer que eu conte mais sobre o **").append(jogo.titulo()).append("**?");
+        }
+        return texto.toString();
+    }
+
     /** O cliente respondeu "não" a uma pergunta do assistente: encerra sem insistir. */
     public String encerramento(PerfilCliente perfil) {
         return "Tudo bem, " + perfil.primeiroNome() + "! Se quiser outra recomendação, procurar um jogo ou tirar uma dúvida, é só me chamar.";
