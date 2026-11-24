@@ -73,12 +73,34 @@ public class RedacaoRespostas {
                     + (perfil.plataformasPreferidas().isEmpty() ? "" : " para " + String.join(" ou ", perfil.plataformasPreferidas()))
                     + " que você ainda não tenha, mas estes cabem no seu perfil:";
         }
-        return abertura + "\n" + listar(recomendacoes) + "\n" + FECHAMENTOS.get(variante % FECHAMENTOS.size());
+        // um jogo de cada gênero marcado: se algum não tem jogo dentro do perfil, diz qual
+        List<String> semJogo = perfil.generosPreferidos().stream()
+                .filter(g -> recomendacoes.stream().noneMatch(r -> r.jogo().genero().equals(g))).toList();
+        String aviso = semJogo.isEmpty() || semJogo.size() == perfil.generosPreferidos().size() ? ""
+                : "\nDe " + String.join(" e de ", semJogo) + " não encontrei um jogo"
+                + (perfil.orcamento() == null ? "" : " até " + moeda(perfil.orcamento()))
+                + (perfil.plataformasPreferidas().isEmpty() ? "" : " para " + String.join(" ou ", perfil.plataformasPreferidas()))
+                + " que você ainda não tenha.";
+        return abertura + "\n" + listar(recomendacoes) + aviso + "\n" + FECHAMENTOS.get(variante % FECHAMENTOS.size());
     }
 
     public String busca(String genero, List<JogoCatalogo> jogos, PerfilCliente perfil) {
+        return busca(genero, jogos, perfil, "");
+    }
+
+    /** @param filtros o que o cliente pediu além do gênero: " para PC", " até R$ 100,00" */
+    public String busca(String genero, List<JogoCatalogo> jogos, PerfilCliente perfil, String filtros) {
         if (jogos.isEmpty()) {
-            return "No momento não temos jogos de " + genero + " em estoque. Posso sugerir algo parecido?";
+            return "No momento não temos jogos de " + genero + filtros + " em estoque. Posso sugerir algo parecido?";
+        }
+        if (!filtros.isEmpty()) {
+            String lista = jogos.stream().collect(Collectors.groupingBy(JogoCatalogo::titulo, LinkedHashMap::new, Collectors.toList()))
+                    .values().stream()
+                    .map(versoes -> "- **" + versoes.get(0).titulo() + "** (" + PerfilRecomendacaoService.plataformas(versoes) + ") — "
+                            + PerfilRecomendacaoService.precos(versoes)
+                            + (perfil.titulosComprados().contains(versoes.get(0).titulo()) ? " — você já tem este" : ""))
+                    .collect(Collectors.joining("\n"));
+            return "Temos estes jogos de " + genero + filtros + ":\n" + lista + "\nQuer que eu indique qual combina mais com você?";
         }
         // uma linha por jogo, com as plataformas em que ele sai
         String lista = jogos.stream().collect(Collectors.groupingBy(JogoCatalogo::titulo, LinkedHashMap::new, Collectors.toList()))
@@ -132,6 +154,11 @@ public class RedacaoRespostas {
     public String parecidos(String base, List<Recomendacao> recomendacoes) {
         return "Quem gosta de **" + base + "** costuma curtir também:\n" + listar(recomendacoes)
                 + "\nQuer que eu conte mais sobre algum deles?";
+    }
+
+    /** O cliente respondeu "não" a uma pergunta do assistente: encerra sem insistir. */
+    public String encerramento(PerfilCliente perfil) {
+        return "Tudo bem, " + perfil.primeiroNome() + "! Se quiser outra recomendação, procurar um jogo ou tirar uma dúvida, é só me chamar.";
     }
 
     public String foraDoAssunto(PerfilCliente perfil) {

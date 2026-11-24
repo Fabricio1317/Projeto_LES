@@ -18,6 +18,15 @@ const GENEROS_DA_LOJA = ["Ação", "Aventura", "Corrida", "Esporte", "Estratégi
   "RPG", "Sandbox", "Simulação", "Terror", "Tiro"];
 const ANA = "ana.souza@nexus.com.br";
 const BRUNO = "bruno.lima@nexus.com.br";
+// preferências da massa de dados (CargaAssistente): restauradas antes dos testes, porque um teste manual na tela pode
+// ter mudado as da Ana ou as do Bruno e os testes abaixo contam com o perfil original deles
+const PREFERENCIAS_DA_MASSA = {
+  [ANA]: { generos: ["RPG", "Aventura"], plataformas: ["PC", "PlayStation 5"], orcamentoMaximo: 250,
+    observacoes: "Gosto de histórias longas e mundo aberto." },
+  [BRUNO]: { generos: ["Esporte", "Corrida"], plataformas: ["PlayStation 5", "Xbox Series X|S"], orcamentoMaximo: null,
+    observacoes: "Jogo online com os amigos." },
+};
+const PLATAFORMAS = ["Nintendo Switch", "PC", "PlayStation 5", "Xbox Series X|S"];
 
 function clientePorEmail(email) {
   return cy.request(`${API}/clientes?email=${encodeURIComponent(email)}`).its("body.0");
@@ -73,7 +82,16 @@ function iaConfigurada() {
   return cy.request({ url: `${API}/assistente/status`, headers: CLIENTE }).its("body.configurada");
 }
 
+function salvarPreferencias(clienteId, preferencias) {
+  return cy.request({ method: "PUT", url: `${API}/clientes/${clienteId}/preferencias`, headers: CLIENTE, body: preferencias });
+}
+
 describe("Assistente de recomendação com IA — RNF0044", () => {
+
+  before(() => {
+    Object.entries(PREFERENCIAS_DA_MASSA).forEach(([email, preferencias]) =>
+      clientePorEmail(email).then((cliente) => salvarPreferencias(cliente.id, preferencias)));
+  });
 
   // =====================================================================
   // Massa de dados: clientes com históricos distintos, vendas e feedback
@@ -198,6 +216,38 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
       });
     });
 
+    it("RNF0044 — o catálogo tem pelo menos 3 jogos de até R$ 100 de cada gênero em cada plataforma", () => {
+      cy.request(`${API}/jogos`).its("body").then((jogos) => {
+        const faltando = [];
+        GENEROS_DA_LOJA.forEach((genero) => PLATAFORMAS.forEach((plataforma) => {
+          const baratos = new Set(jogos.filter((j) => j.genero === genero && j.plataforma === plataforma && j.preco <= 100)
+            .map((j) => j.titulo));
+          if (baratos.size < 3) faltando.push(`${genero} / ${plataforma}: ${baratos.size}`);
+        }));
+        expect(faltando, "combinações gênero / plataforma com menos de 3 jogos até R$ 100").to.be.empty;
+      });
+    });
+
+    it("RNF0044 — o mesmo jogo tem o preço de cada plataforma: PS5 e Xbox iguais, PC e Switch mais baratos", () => {
+      cy.request(`${API}/jogos`).its("body").then((jogos) => {
+        const precoDe = (titulo, plataforma) => jogos.find((j) => j.titulo === titulo && j.plataforma === plataforma).preco;
+        // Hogwarts Legacy saiu primeiro no PS5, por R$ 199,90
+        expect(precoDe("Hogwarts Legacy", "PlayStation 5")).to.eq(199.9);
+        expect(precoDe("Hogwarts Legacy", "Xbox Series X|S")).to.eq(199.9);
+        expect(precoDe("Hogwarts Legacy", "PC")).to.eq(159.9);
+        expect(precoDe("Hogwarts Legacy", "Nintendo Switch")).to.eq(179.9);
+        // The Witcher 3 saiu primeiro no PC, por R$ 149,90: nos consoles custa mais
+        expect(precoDe("The Witcher 3: Wild Hunt Complete Edition", "PC")).to.eq(149.9);
+        expect(precoDe("The Witcher 3: Wild Hunt Complete Edition", "PlayStation 5")).to.eq(184.9);
+        // a maioria dos jogos vendidos em várias plataformas tem preços diferentes entre elas
+        const precosPorTitulo = {};
+        jogos.filter((j) => GENEROS_DA_LOJA.includes(j.genero))
+          .forEach((j) => (precosPorTitulo[j.titulo] = (precosPorTitulo[j.titulo] || new Set()).add(j.preco)));
+        const variados = Object.values(precosPorTitulo).filter((precos) => precos.size > 1).length;
+        expect(variados, "jogos com preço diferente entre plataformas").to.be.greaterThan(50);
+      });
+    });
+
     it("RNF0044 — para qualquer gênero e plataforma marcados no perfil, as 3 primeiras recomendações são daquele gênero e plataforma", () => {
       criarCliente().then((novo) => {
         cy.request({ url: `${API}/assistente/opcoes`, headers: CLIENTE }).its("body").then(({ generos: todos, plataformas }) => {
@@ -217,6 +267,19 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
           }));
           cy.then(() => expect(erradas, "combinações sem 3 recomendações do gênero e da plataforma").to.be.empty);
         });
+      });
+    });
+
+    it("RNF0044 — com vários gêneros marcados, as recomendações trazem um jogo de cada um", () => {
+      const generos = ["Ação", "Puzzle", "Terror", "Corrida"];
+      criarCliente().then((novo) => {
+        salvarPreferencias(novo.id, { generos, plataformas: ["PlayStation 5"], orcamentoMaximo: null, observacoes: null });
+        // pedindo só 3, vêm pelo menos 4: um de cada gênero marcado
+        cy.request({ url: `${API}/clientes/${novo.id}/assistente/recomendacoes?quantidade=3`, headers: CLIENTE }).its("body")
+          .then((recomendacoes) => {
+            generos.forEach((g) => expect(recomendacoes.map((r) => r.genero), `um jogo de ${g}`).to.include(g));
+            recomendacoes.forEach((r) => expect(r.plataforma, `${r.titulo} é da plataforma do cliente`).to.eq("PlayStation 5"));
+          });
       });
     });
 
@@ -317,14 +380,39 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
       cy.get("[data-cy=ia-novos-dados]").should("contain.text", "treino automático");
     });
 
-    it("RNF0044 — sem a IA configurada, o ajuste fino é recusado com a orientação de configuração", function () {
+    it("RNF0044 — sem a IA configurada, o ajuste fino é recusado com a orientação de configuração", () => {
+      const motivo = "o Ollama não está rodando em http://localhost:11434 (abra o Ollama e baixe o modelo: ollama pull qwen2.5:1.5b)";
+
+      // com o Ollama desligado, a API recusa de verdade; ligado, o pedido iniciaria um treino real (cerca de 8 horas),
+      // então essa parte só roda sem a IA
       iaConfigurada().then((configurada) => {
-        if (configurada) this.skip(); // com a IA pronta, o pedido iniciaria um treino de verdade (cerca de uma hora)
+        if (configurada) return;
         cy.request({ method: "POST", url: `${API}/ia/treinamentos`, headers: ADMIN, failOnStatusCode: false }).then((r) => {
           expect(r.status).to.eq(503);
           expect(r.body.codigoRegra).to.eq("IA_INDISPONIVEL");
           expect(r.body.mensagem).to.contain("Ollama");
         });
+      });
+
+      // na tela, a IA sem configuração é simulada (nenhum treino é iniciado): o aviso explica o que fazer, o botão
+      // fica desativado e, se o pedido chegar mesmo assim, a recusa do servidor aparece para o administrador
+      cy.request({ url: `${API}/ia/status`, headers: ADMIN }).its("body").then((status) => {
+        cy.intercept("GET", "**/api/ia/status", { statusCode: 200,
+          body: { ...status, configurada: false, motivoNaoConfigurada: motivo, treinamentoEmAndamento: false } }).as("status");
+        cy.intercept("POST", "**/api/ia/treinamentos", { statusCode: 503,
+          body: { codigoRegra: "IA_INDISPONIVEL", mensagem: `A IA não está configurada: ${motivo}` } }).as("treinar");
+
+        cy.visit("/index.html");
+        cy.get("[data-cy=perfil-usuario]").select("ADMINISTRADOR");
+        cy.get("[data-cy=nav-ia]").click();
+        cy.wait("@status");
+        cy.get("[data-cy=ia-aviso]").should("be.visible").and("contain.text", "IA não configurada").and("contain.text", "Ollama");
+        cy.get("[data-cy=btn-treinar]").should("be.disabled");
+
+        cy.get("[data-cy=btn-treinar]").invoke("prop", "disabled", false).click();
+        cy.wait("@treinar");
+        cy.get("[data-cy=mensagem]").should("have.class", "erro").and("contain.text", "IA_INDISPONIVEL").and("contain.text", "Ollama");
+        cy.get("[data-cy=btn-treinar]").should("be.disabled");
       });
     });
   });
@@ -423,6 +511,118 @@ describe("Assistente de recomendação com IA — RNF0044", () => {
           cy.get(`[data-cy=item-avaliacao][data-id="${id}"]`).should("have.attr", "data-avaliacao", "UTIL");
         });
       });
+    });
+  });
+
+  // =====================================================================
+  // Conversa básica com a IA de verdade: o que o cliente responde, refina ou procura
+  // (o backend confere cada resposta contra o catálogo e o perfil; só com o Ollama rodando)
+  // =====================================================================
+  describe("Conversa básica com a IA generativa", () => {
+
+    const RECUSA = "só consigo ajudar com jogos";
+    const PREFERIDA_ERRADA = /(PC|PlayStation 5|Xbox Series X\|S), a plataforma que você prefere/;
+
+    /** Manda as mensagens numa mesma conversa, uma depois da outra, e devolve as respostas na ordem. */
+    function conversar(clienteId, mensagens) {
+      const respostas = [];
+      let conversaId = null;
+      mensagens.forEach((mensagem) => {
+        cy.then(() => cy.request({ method: "POST", url: `${API}/clientes/${clienteId}/assistente/mensagens`, headers: CLIENTE,
+          body: { conversaId, mensagem }, timeout: 120000 })).then((r) => {
+          conversaId = r.body.conversaId;
+          respostas.push(r.body.resposta);
+        });
+      });
+      return cy.then(() => respostas);
+    }
+
+    /** Um cliente novo, sem compras, com as preferências informadas. */
+    function clienteCom(preferencias) {
+      return criarCliente().then((novo) => salvarPreferencias(novo.id, { orcamentoMaximo: null, observacoes: null, ...preferencias })
+        .then(() => novo));
+    }
+
+    function catalogo() {
+      return cy.request(`${API}/jogos`).its("body").then((jogos) => jogos.filter((j) => GENEROS_DA_LOJA.includes(j.genero)));
+    }
+
+    const citados = (resposta, jogos) => [...new Set(jogos.map((j) => j.titulo))].filter((t) => resposta.includes(t));
+
+    beforeEach(function () {
+      iaConfigurada().then((configurada) => {
+        if (!configurada) this.skip();
+      });
+    });
+
+    it("RNF0044 — responder \"sim\" a uma pergunta do assistente continua a conversa, e \"não, obrigado\" encerra", () => {
+      catalogo().then((jogos) => clienteCom({ generos: ["Corrida"], plataformas: ["Xbox Series X|S"] }).then((cliente) => {
+        conversar(cliente.id, ["Me recomenda um jogo?", "sim", "não, obrigado"]).then(([recomendacao, sim, nao]) => {
+          expect(citados(recomendacao, jogos), "a recomendação cita um jogo do catálogo").to.not.be.empty;
+          expect(sim, "o \"sim\" não é tratado como assunto fora de jogos").to.not.contain(RECUSA);
+          expect(citados(sim, jogos), "o \"sim\" traz um jogo do catálogo").to.not.be.empty;
+          expect(citados(nao, jogos), "o \"não\" não empurra outro jogo").to.be.empty;
+        });
+      }));
+    });
+
+    it("RNF0044 — depois de \"Quais jogos de corrida vocês têm?\", \"quero ver somente os de PC\" lista todos os de corrida do PC", () => {
+      catalogo().then((jogos) => clienteCom({ generos: ["Corrida"], plataformas: ["Xbox Series X|S"] }).then((cliente) => {
+        const corridaNoPc = [...new Set(jogos.filter((j) => j.genero === "Corrida" && j.plataforma === "PC").map((j) => j.titulo))];
+        const corridaSemPc = [...new Set(jogos.filter((j) => j.genero === "Corrida").map((j) => j.titulo))]
+          .filter((t) => !corridaNoPc.includes(t));
+        conversar(cliente.id, ["Quais jogos de corrida vocês têm?", "quero ver somente os de Pc"]).then(([, soPc]) => {
+          corridaNoPc.forEach((t) => expect(soPc, `${t} sai para PC`).to.contain(t));
+          corridaSemPc.forEach((t) => expect(soPc, `${t} não sai para PC`).to.not.contain(t));
+        });
+      }));
+    });
+
+    it("RNF0044 — procurar um jogo pelo nome, mesmo escrito errado, traz o jogo pedido com o preço", () => {
+      clienteCom({ generos: ["Aventura"], plataformas: ["Xbox Series X|S"] }).then((cliente) => {
+        conversar(cliente.id, ["procura o minecraft pra mim por favor", "conta mais sobre the wicther 3"]).then(([minecraft, witcher]) => {
+          expect(minecraft).to.contain("Minecraft").and.match(/R\$ \d/);
+          expect(minecraft, "Sandbox não é gênero preferido do cliente").to.not.match(/Sandbox, um dos seus gêneros preferidos/);
+          expect(minecraft).to.not.match(PREFERIDA_ERRADA);
+          expect(witcher).to.contain("The Witcher 3").and.match(/R\$ \d/).and.not.contain(RECUSA);
+        });
+      });
+    });
+
+    it("RNF0044 — com 4 gêneros marcados, a recomendação da IA traz um jogo de cada gênero", () => {
+      const generos = ["Ação", "Puzzle", "Terror", "Corrida"];
+      catalogo().then((jogos) => clienteCom({ generos, plataformas: ["PlayStation 5"] }).then((cliente) => {
+        conversar(cliente.id, ["Me recomenda um jogo?"]).then(([resposta]) => {
+          generos.forEach((g) => {
+            const doGenero = [...new Set(jogos.filter((j) => j.genero === g && j.plataforma === "PlayStation 5").map((j) => j.titulo))];
+            expect(doGenero.some((t) => resposta.includes(t)), `cita um jogo de ${g}`).to.eq(true);
+          });
+        });
+      }));
+    });
+
+    it("RNF0044 — a recomendação segue as preferências mudadas na tela, sem gênero ou plataforma preferida inventados", () => {
+      catalogo().then((jogos) => criarCliente().then((cliente) => {
+        cy.visit("/index.html");
+        cy.get("[data-cy=nav-assistente]").click();
+        cy.get("[data-cy=assist-cliente] option").should("have.length.greaterThan", 1);
+        cy.get("[data-cy=assist-cliente]").select(String(cliente.id));
+        cy.get('[data-cy=pref-genero][value="Simulação"]').check();
+        cy.get('[data-cy=pref-plataforma][value="Nintendo Switch"]').check();
+        cy.get("[data-cy=pref-orcamento]").type("100");
+        cy.get("[data-cy=btn-salvar-preferencias]").click();
+        cy.get("[data-cy=mensagem]").should("have.class", "sucesso");
+
+        const simulacaoNoSwitch = [...new Set(jogos.filter((j) => j.genero === "Simulação" && j.plataforma === "Nintendo Switch"
+          && j.preco <= 100).map((j) => j.titulo))];
+        const luta = [...new Set(jogos.filter((j) => j.genero === "Luta").map((j) => j.titulo))];
+        conversar(cliente.id, ["Me recomenda um jogo?", "e o de luta?"]).then(([recomendacao, deLuta]) => {
+          expect(simulacaoNoSwitch.some((t) => recomendacao.includes(t)), "cita um jogo de Simulação do Switch até R$ 100").to.eq(true);
+          expect(recomendacao).to.not.match(PREFERIDA_ERRADA);
+          expect(luta.some((t) => deLuta.includes(t)), "\"e o de luta?\" traz um jogo de Luta").to.eq(true);
+          expect(deLuta, "Luta não é gênero preferido do cliente").to.not.match(/Luta, um dos seus gêneros preferidos/);
+        });
+      }));
     });
   });
 });

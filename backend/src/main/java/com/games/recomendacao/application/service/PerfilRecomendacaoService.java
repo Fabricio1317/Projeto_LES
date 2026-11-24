@@ -237,12 +237,28 @@ public class PerfilRecomendacaoService {
             if (pontos > 0 && !motivos.isEmpty()) resultado.add(new Recomendacao(jogo, pontos, motivos));
         }
 
-        resultado.sort(Comparator.comparingDouble(Recomendacao::pontuacao).reversed()
+        Comparator<Recomendacao> ordem = Comparator.comparingDouble(Recomendacao::pontuacao).reversed()
                 .thenComparing(r -> -vendas.vendasPorJogo().getOrDefault(r.jogo().titulo(), 0))
-                .thenComparing(r -> r.jogo().titulo()));
+                .thenComparing(r -> r.jogo().titulo());
+        resultado.sort(ordem);
         // o mesmo jogo em duas plataformas do cliente: fica só a versão mais bem pontuada
         Set<String> vistos = new HashSet<>();
-        return resultado.stream().filter(r -> vistos.add(r.jogo().titulo())).limit(quantidade).toList();
+        List<Recomendacao> unicos = resultado.stream().filter(r -> vistos.add(r.jogo().titulo())).toList();
+
+        // um jogo de cada gênero marcado no perfil (o mais bem pontuado de cada), mesmo que sejam mais gêneros que a
+        // quantidade pedida; depois completa com os próximos da pontuação
+        List<Recomendacao> escolhidos = new ArrayList<>();
+        Set<String> generosCobertos = new HashSet<>();
+        for (Recomendacao r : unicos) {
+            if (perfil.generosPreferidos().contains(r.jogo().genero()) && generosCobertos.add(r.jogo().genero())) escolhidos.add(r);
+        }
+        int total = Math.max(quantidade, escolhidos.size());
+        for (Recomendacao r : unicos) {
+            if (escolhidos.size() >= total) break;
+            if (!escolhidos.contains(r)) escolhidos.add(r);
+        }
+        escolhidos.sort(ordem);
+        return escolhidos;
     }
 
     /**
@@ -286,6 +302,8 @@ public class PerfilRecomendacaoService {
                 se ele disser que não há nenhum, diga isso ao cliente e não cite outro jogo desse gênero.
                 - Evite os jogos que o cliente já marcou como recomendação não útil.
                 - Ao recomendar, prefira as SUGESTÕES PARA ESTE CLIENTE, que vêm do histórico de vendas da loja.
+                - Se o cliente marcou mais de um gênero, recomende um jogo de cada gênero marcado que aparece nas \
+                SUGESTÕES PARA ESTE CLIENTE.
                 - Quando o cliente pedir uma recomendação, recomende na mesma resposta pelo menos um jogo das \
                 SUGESTÕES PARA ESTE CLIENTE, citando o título exatamente como está no CATÁLOGO. Não responda \
                 só com uma pergunta: o perfil já diz do que ele gosta.
@@ -391,9 +409,14 @@ public class PerfilRecomendacaoService {
 
     /** Plataformas citadas na mensagem ("pro Switch", "no PC", "de PS5"). */
     public static Set<String> plataformasDoPedido(String mensagem, List<JogoCatalogo> catalogo) {
-        String texto = semAcento(mensagem == null ? "" : mensagem);
+        return plataformasCitadas(mensagem, catalogo.stream().map(JogoCatalogo::plataforma).distinct().sorted().toList());
+    }
+
+    /** Quais destas plataformas o texto cita ("pro Switch", "no PC", "de PS5", "Xbox Series X|S"). */
+    public static Set<String> plataformasCitadas(String textoOriginal, List<String> plataformas) {
+        String texto = semAcento(textoOriginal == null ? "" : textoOriginal);
         Set<String> pedidas = new LinkedHashSet<>();
-        for (String plataforma : catalogo.stream().map(JogoCatalogo::plataforma).distinct().sorted().toList()) {
+        for (String plataforma : plataformas) {
             String regex = switch (plataforma) {
                 case "PC" -> "\\b(pc|computador)\\b";
                 case "Nintendo Switch" -> "\\b(switch|nintendo)\\b";
@@ -498,6 +521,84 @@ public class PerfilRecomendacaoService {
 
     private static String semAcento(String texto) {
         return Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
+    }
+
+    /** Texto para comparar títulos: sem acento, minúsculo e sem pontuação ("Guilty Gear -Strive-" → "guilty gear strive"). */
+    public static String normalizarTitulo(String texto) {
+        return texto == null ? "" : semAcento(texto).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+    }
+
+    /**
+     * Onde o título aparece no texto, ou -1. Vale o título inteiro, mesmo com outra pontuação ("o Guilty Gear -Strive
+     * é como?"), ou o nome antes de ":" ou " -" quando ele tem mais de uma palavra ("Guilty Gear", "The Legend of Zelda").
+     * Palavras inteiras: "Civilization VI" não é citado dentro de "Civilization VII".
+     */
+    public static int posicaoDoTitulo(String texto, String titulo) {
+        String alvo = " " + normalizarTitulo(texto) + " ";
+        for (String forma : formasDoTitulo(titulo)) {
+            int posicao = alvo.indexOf(" " + forma + " ");
+            if (posicao >= 0) return posicao;
+        }
+        return -1;
+    }
+
+    public static boolean citaTitulo(String texto, String titulo) {
+        return posicaoDoTitulo(texto, titulo) >= 0;
+    }
+
+    /**
+     * Como {@link #citaTitulo}, mas aceita um erro de digitação numa palavra de 4 letras ou mais ("the wicther 3",
+     * "minecarft"). Serve para a mensagem do cliente, não para a resposta da IA.
+     */
+    public static boolean citaTituloAproximado(String texto, String titulo) {
+        if (citaTitulo(texto, titulo)) return true;
+        String[] palavras = normalizarTitulo(texto).split(" ");
+        for (String forma : formasDoTitulo(titulo)) {
+            String[] alvo = forma.split(" ");
+            for (int i = 0; i + alvo.length <= palavras.length; i++) {
+                int erros = 0;
+                boolean bate = true;
+                for (int k = 0; k < alvo.length && bate; k++) {
+                    String esperado = alvo[k];
+                    String escrito = palavras[i + k];
+                    if (esperado.equals(escrito)) continue;
+                    if (esperado.length() >= 4 && distancia(esperado, escrito) <= 1) erros++;
+                    else bate = false;
+                }
+                if (bate && erros <= 1) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Distância de edição com troca de letras vizinhas ("witcher" → "wicther" = 1). */
+    private static int distancia(String a, String b) {
+        if (Math.abs(a.length() - b.length()) > 1) return 2;
+        int[][] d = new int[a.length() + 1][b.length() + 1];
+        for (int i = 0; i <= a.length(); i++) d[i][0] = i;
+        for (int j = 0; j <= b.length(); j++) d[0][j] = j;
+        for (int i = 1; i <= a.length(); i++) {
+            for (int j = 1; j <= b.length(); j++) {
+                int custo = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                d[i][j] = Math.min(Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + custo);
+                if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2) && a.charAt(i - 2) == b.charAt(j - 1)) {
+                    d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+                }
+            }
+        }
+        return d[a.length()][b.length()];
+    }
+
+    private static List<String> formasDoTitulo(String titulo) {
+        String completo = normalizarTitulo(titulo);
+        int doisPontos = titulo.indexOf(':');
+        int hifen = titulo.indexOf(" -");
+        int corte = doisPontos > 0 && (hifen < 0 || doisPontos < hifen) ? doisPontos : hifen;
+        if (corte > 0) {
+            String curto = normalizarTitulo(titulo.substring(0, corte));
+            if (curto.contains(" ") && !curto.equals(completo)) return List.of(completo, curto);
+        }
+        return List.of(completo);
     }
 
     /** Valor pedido na mensagem ("tem algo até R$ 150?", "menos de 100 reais"), se houver. */

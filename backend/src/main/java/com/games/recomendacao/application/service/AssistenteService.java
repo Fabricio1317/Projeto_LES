@@ -42,12 +42,14 @@ public class AssistenteService {
     private final MensagemAssistenteRepository mensagemRepository;
     private final ClienteRepository clienteRepository;
     private final ConferenciaResposta conferencia;
+    private final ContinuacaoConversa continuacao;
 
     public AssistenteService(PerfilRecomendacaoService perfis, TreinamentoService treinamentos, IaGenerativa ia,
                              MensagemAssistenteRepository mensagemRepository, ClienteRepository clienteRepository,
-                             ConferenciaResposta conferencia) {
+                             ConferenciaResposta conferencia, ContinuacaoConversa continuacao) {
         this.perfis = perfis;
         this.conferencia = conferencia;
+        this.continuacao = continuacao;
         this.treinamentos = treinamentos;
         this.ia = ia;
         this.mensagemRepository = mensagemRepository;
@@ -68,25 +70,36 @@ public class AssistenteService {
         String conversa = conversaId == null || conversaId.isBlank() ? UUID.randomUUID().toString() : conversaId;
 
         List<MensagemAssistente> anteriores = mensagemRepository.findByClienteIdAndConversaIdOrderByIdAsc(clienteId, conversa);
+        PerfilCliente perfil = perfis.perfil(clienteId); // lido a cada mensagem: o que o cliente mudou na tela já vale
+        List<JogoCatalogo> catalogo = perfis.catalogo();
+        // "sim" a "Quer que eu sugira outros parecidos?" vira "me sugira outros jogos parecidos com Hollow Knight"
+        // e "quero ver somente os de PC", depois de "Quais jogos de corrida vocês têm?", vira a busca de corrida no PC
+        MensagemAssistente ultima = anteriores.isEmpty() ? null : anteriores.get(anteriores.size() - 1);
+        String pedido = continuacao.interpretar(texto.trim(), ultima == null ? null : ultima.getPergunta(),
+                ultima == null ? null : ultima.getResposta(), catalogo);
+
         List<Turno> turnos = new ArrayList<>();
         for (MensagemAssistente anterior : anteriores.subList(Math.max(0, anteriores.size() - TROCAS_DE_CONTEXTO), anteriores.size())) {
             turnos.add(new Turno(true, anterior.getPergunta()));
             turnos.add(new Turno(false, anterior.getResposta()));
         }
-        turnos.add(new Turno(true, texto.trim()));
+        turnos.add(new Turno(true, pedido));
 
-        PerfilCliente perfil = perfis.perfil(clienteId);
-        List<JogoCatalogo> catalogo = perfis.catalogo();
         // pedido por estilo ("quero criar coisas..."), valor ("até R$ 150") ou gênero ("um jogo de corrida"):
         // os jogos que servem para o cliente vão destacados no prompt
         DadosVendas vendas = perfis.dadosVendas();
-        String instrucao = perfis.comBlocosDoPedido(perfis.instrucaoSistema(perfil, catalogo, vendas), texto, perfil, catalogo, vendas);
+        String instrucao = perfis.comBlocosDoPedido(perfis.instrucaoSistema(perfil, catalogo, vendas), pedido, perfil, catalogo, vendas);
         Optional<TreinamentoModelo> emUso = treinamentos.modeloEmUso();
         String resposta = ia.responder(emUso.map(TreinamentoModelo::getModeloAjustado).orElse(null), instrucao, turnos);
         String modelo = emUso.map(t -> t.getNomeModelo() + " (ajuste fino de " + t.getModeloBase() + ")")
                 .orElse(ia.modeloBase() + " (modelo base)");
         // a IA citou um jogo que o cliente já tem, acima do orçamento ou de outra plataforma: vale a resposta conferida
-        ConferenciaResposta.Resultado conferida = conferencia.conferir(resposta, texto, perfil, catalogo, vendas);
+        // ...ou só repetiu uma resposta que já deu nesta conversa a outra pergunta
+        List<String> respostasAnteriores = anteriores.stream()
+                .filter(m -> !m.getPergunta().equalsIgnoreCase(texto.trim()))
+                .map(MensagemAssistente::getResposta)
+                .toList();
+        ConferenciaResposta.Resultado conferida = conferencia.conferir(resposta, pedido, perfil, catalogo, vendas, respostasAnteriores);
         if (conferida.substituida()) modelo += " — corrigida pela conferência do perfil";
         return mensagemRepository.save(new MensagemAssistente(clienteId, conversa, texto.trim(), conferida.resposta(), modelo));
     }

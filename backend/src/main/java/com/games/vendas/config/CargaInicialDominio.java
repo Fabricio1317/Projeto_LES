@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * RNF0013 — carga dos registros de domínio necessários para o sistema
@@ -112,7 +113,59 @@ public class CargaInicialDominio implements ApplicationRunner {
             Map.entry("Doom Eternal", "tiro frenético, combate intenso, muito desafiador"),
             Map.entry("Splatoon 3", "tiro de tinta colorido, competitivo online, para todas as idades"),
             Map.entry("Metroid Prime Remastered", "tiro em primeira pessoa, exploração, ficção científica"),
-            Map.entry("Helldivers 2", "tiro cooperativo com amigos, missões caóticas, ficção científica"));
+            Map.entry("Helldivers 2", "tiro cooperativo com amigos, missões caóticas, ficção científica"),
+            // jogos de até R$ 100 em todas as plataformas (3 por gênero e plataforma)
+            Map.entry("Dead Cells", "roguelike de ação, combate rápido, muito desafiador, exploração"),
+            Map.entry("Hyper Light Drifter", "ação em pixel art, exploração, desafiador, história sem palavras"),
+            Map.entry("Tunic", "aventura de raposa, exploração, quebra-cabeças, segredos"),
+            Map.entry("Oxenfree", "história marcante, escolhas que mudam a história, suspense sobrenatural"),
+            Map.entry("A Short Hike", "exploração tranquila, relaxante, para todas as idades"),
+            Map.entry("Horizon Chase Turbo", "corrida arcade retrô, multijogador local, para todas as idades"),
+            Map.entry("Hotshot Racing", "corrida arcade, visual colorido, multijogador local"),
+            Map.entry("Inertial Drift", "corrida de drift, desafiador, visual anime"),
+            Map.entry("Golf With Your Friends", "minigolfe, multijogador local e online, festa com amigos"),
+            Map.entry("OlliOlli World", "skate, manobras, desafiador, visual colorido"),
+            Map.entry("Lethal League Blaze", "esporte de bola veloz, competitivo online, multijogador local"),
+            Map.entry("Northgard", "estratégia viking, construir vilas, planejamento"),
+            Map.entry("Bad North", "estratégia tática em ilhas, partidas curtas, planejamento"),
+            Map.entry("Wargroove", "estratégia por turnos, multijogador local, campanha longa"),
+            Map.entry("Gang Beasts", "brigas engraçadas, multijogador local, festa com amigos"),
+            Map.entry("Ultimate Chicken Horse", "construir fases para os amigos, multijogador local, festa"),
+            Map.entry("Overcooked! 2", "cozinha caótica, cooperativo local, festa com amigos"),
+            Map.entry("Skullgirls 2nd Encore", "luta 2D, combos, competitivo online"),
+            Map.entry("Nidhogg 2", "duelos rápidos, multijogador local, festa"),
+            Map.entry("Them's Fightin' Herds", "luta 2D, personagens fofos, competitivo online"),
+            Map.entry("Cuphead", "plataforma 2D com visual de desenho animado, muito desafiador, cooperativo local"),
+            Map.entry("Shovel Knight: Treasure Trove", "plataforma 2D retrô, desafiador, várias campanhas"),
+            Map.entry("Rayman Legends", "plataforma 2D musical, cooperativo local, divertido para a família"),
+            Map.entry("Tetris Effect: Connected", "quebra-cabeça clássico, música envolvente, relaxante"),
+            Map.entry("Unpacking", "desempacotar e decorar, relaxante, história sem palavras"),
+            Map.entry("Inside", "quebra-cabeças sombrios, suspense, atmosfera marcante"),
+            Map.entry("Undertale", "escolhas que mudam a história, humor, trilha sonora marcante"),
+            Map.entry("Sea of Stars", "RPG por turnos retrô, história marcante, exploração"),
+            Map.entry("Darkest Dungeon", "RPG sombrio, muito desafiador, planejamento"),
+            Map.entry("Don't Starve Together", "sobrevivência, construir bases, cooperativo com amigos"),
+            Map.entry("Core Keeper", "construir e criar no subsolo, exploração, cooperativo com amigos"),
+            Map.entry("Forager", "construir e criar, exploração, relaxante"),
+            Map.entry("Spiritfarer", "barco acolhedor, relaxante, história emocionante, cooperativo local"),
+            Map.entry("Cozy Grove", "acampamento aconchegante, decorar, relaxante, ritmo tranquilo"),
+            Map.entry("Potion Craft: Alchemist Simulator", "criar poções, loja medieval, relaxante"),
+            Map.entry("Layers of Fear", "terror psicológico, suspense, atmosfera marcante"),
+            Map.entry("Darkwood", "terror de sobrevivência, muita tensão, exploração"),
+            Map.entry("Five Nights at Freddy's", "sustos, suspense, partidas curtas"),
+            Map.entry("Enter the Gungeon", "tiro roguelike, muito desafiador, cooperativo local"),
+            Map.entry("Broforce", "tiro 2D exagerado, cooperativo local, humor"),
+            Map.entry("Ruiner", "tiro cyberpunk, combate intenso, muito desafiador"));
+
+    /** Jogos lançados no PC e também no PS5, no Xbox e no Switch (os de até R$ 100 acrescentados acima). */
+    private static final Set<String> NAS_QUATRO_PLATAFORMAS = Set.of("Dead Cells", "Hyper Light Drifter", "Tunic", "Oxenfree",
+            "A Short Hike", "Horizon Chase Turbo", "Hotshot Racing", "Inertial Drift", "Golf With Your Friends", "OlliOlli World",
+            "Lethal League Blaze", "Northgard", "Bad North", "Wargroove", "Gang Beasts", "Ultimate Chicken Horse", "Overcooked! 2",
+            "Skullgirls 2nd Encore", "Nidhogg 2", "Them's Fightin' Herds", "Cuphead", "Shovel Knight: Treasure Trove", "Rayman Legends",
+            "Tetris Effect: Connected", "Unpacking", "Inside", "Undertale", "Sea of Stars", "Darkest Dungeon", "Don't Starve Together",
+            "Core Keeper", "Forager", "Spiritfarer", "Cozy Grove", "Potion Craft: Alchemist Simulator", "Layers of Fear", "Darkwood",
+            "Five Nights at Freddy's", "Enter the Gungeon", "Broforce", "Ruiner");
+    private static final List<String> CONSOLES = List.of("PlayStation 5", "Xbox Series X|S", "Nintendo Switch");
 
     /**
      * RNF0044 — versões do mesmo jogo em outras plataformas em que ele foi lançado de fato. Cada versão é
@@ -288,6 +341,49 @@ public class CargaInicialDominio implements ApplicationRunner {
             jogo("Splatoon 3", "Nintendo Switch", "Tiro", "Nintendo", "Nintendo", "10", 2022, null, "299.90", 25, "0.100");
             jogo("Metroid Prime Remastered", "Nintendo Switch", "Tiro", "Retro Studios", "Nintendo", "12", 2023, null, "199.90", 20, "0.100");
             jogo("Helldivers 2", "PlayStation 5", "Tiro", "Arrowhead Game Studios", "Sony Interactive Entertainment", "16", 2024, null, "199.90", 20, "0.120");
+            // até R$ 100 em qualquer plataforma: 3 por gênero e plataforma, para quem marca um orçamento baixo no perfil
+            // (o preço é o do PC; nos consoles sai até 25% acima, pela regra de precoNaPlataforma)
+            jogo("Dead Cells", "PC", "Ação", "Motion Twin", "Motion Twin", "16", 2018, null, "69.90", 30, "0.150");
+            jogo("Hyper Light Drifter", "PC", "Ação", "Heart Machine", "Heart Machine", "10", 2016, null, "49.90", 30, "0.150");
+            jogo("Tunic", "PC", "Aventura", "Andrew Shouldice", "Finji", "10", 2022, null, "79.90", 30, "0.150");
+            jogo("Oxenfree", "PC", "Aventura", "Night School Studio", "Night School Studio", "12", 2016, null, "49.90", 30, "0.150");
+            jogo("A Short Hike", "PC", "Aventura", "adamgryu", "Whippoorwill", "L", 2019, null, "29.90", 30, "0.150");
+            jogo("Horizon Chase Turbo", "PC", "Corrida", "Aquiris", "Aquiris", "L", 2018, null, "49.90", 30, "0.150");
+            jogo("Hotshot Racing", "PC", "Corrida", "Sumo Digital", "Curve Games", "L", 2020, null, "69.90", 30, "0.150");
+            jogo("Inertial Drift", "PC", "Corrida", "Level 91 Entertainment", "PQube", "L", 2020, null, "59.90", 30, "0.150");
+            jogo("Golf With Your Friends", "PC", "Esporte", "Blacklight Interactive", "Team17", "L", 2020, null, "39.90", 30, "0.150");
+            jogo("OlliOlli World", "PC", "Esporte", "Roll7", "Private Division", "L", 2022, null, "79.90", 30, "0.150");
+            jogo("Lethal League Blaze", "PC", "Esporte", "Team Reptile", "Team Reptile", "10", 2018, null, "49.90", 30, "0.150");
+            jogo("Northgard", "PC", "Estratégia", "Shiro Games", "Shiro Games", "12", 2018, null, "79.90", 30, "0.150");
+            jogo("Bad North", "PC", "Estratégia", "Plausible Concept", "Raw Fury", "10", 2018, null, "49.90", 30, "0.150");
+            jogo("Wargroove", "PC", "Estratégia", "Chucklefish", "Chucklefish", "10", 2019, null, "69.90", 30, "0.150");
+            jogo("Gang Beasts", "PC", "Festa", "Boneloaf", "Double Fine", "L", 2017, null, "59.90", 30, "0.150");
+            jogo("Ultimate Chicken Horse", "PC", "Festa", "Clever Endeavour Games", "Clever Endeavour Games", "L", 2016, null, "49.90", 30, "0.150");
+            jogo("Overcooked! 2", "PC", "Festa", "Ghost Town Games", "Team17", "L", 2018, null, "79.90", 30, "0.150");
+            jogo("Skullgirls 2nd Encore", "PC", "Luta", "Hidden Variable Studios", "Autumn Games", "12", 2015, null, "49.90", 30, "0.150");
+            jogo("Nidhogg 2", "PC", "Luta", "Messhof", "Messhof", "12", 2017, null, "49.90", 30, "0.150");
+            jogo("Them's Fightin' Herds", "PC", "Luta", "Mane6", "Modus Games", "10", 2020, null, "59.90", 30, "0.150");
+            jogo("Cuphead", "PC", "Plataforma", "Studio MDHR", "Studio MDHR", "10", 2017, null, "59.90", 30, "0.150");
+            jogo("Shovel Knight: Treasure Trove", "PC", "Plataforma", "Yacht Club Games", "Yacht Club Games", "L", 2014, null, "79.90", 30, "0.150");
+            jogo("Rayman Legends", "PC", "Plataforma", "Ubisoft Montpellier", "Ubisoft", "L", 2013, null, "59.90", 30, "0.150");
+            jogo("Tetris Effect: Connected", "PC", "Puzzle", "Monstars", "Enhance", "L", 2020, null, "79.90", 30, "0.150");
+            jogo("Unpacking", "PC", "Puzzle", "Witch Beam", "Humble Games", "L", 2021, null, "49.90", 30, "0.150");
+            jogo("Inside", "PC", "Puzzle", "Playdead", "Playdead", "16", 2016, null, "49.90", 30, "0.150");
+            jogo("Undertale", "PC", "RPG", "Toby Fox", "Toby Fox", "10", 2015, null, "39.90", 30, "0.150");
+            jogo("Sea of Stars", "PC", "RPG", "Sabotage Studio", "Sabotage Studio", "10", 2023, null, "79.90", 30, "0.150");
+            jogo("Darkest Dungeon", "PC", "RPG", "Red Hook Studios", "Red Hook Studios", "16", 2016, null, "69.90", 30, "0.150");
+            jogo("Don't Starve Together", "PC", "Sandbox", "Klei Entertainment", "Klei Entertainment", "10", 2016, null, "39.90", 30, "0.150");
+            jogo("Core Keeper", "PC", "Sandbox", "Pugstorm", "Fireshine Games", "10", 2024, null, "59.90", 30, "0.150");
+            jogo("Forager", "PC", "Sandbox", "HopFrog", "Humble Games", "L", 2019, null, "49.90", 30, "0.150");
+            jogo("Spiritfarer", "PC", "Simulação", "Thunder Lotus Games", "Thunder Lotus Games", "10", 2020, null, "69.90", 30, "0.150");
+            jogo("Cozy Grove", "PC", "Simulação", "Spry Fox", "The Quantum Astrophysicists Guild", "L", 2021, null, "39.90", 30, "0.150");
+            jogo("Potion Craft: Alchemist Simulator", "PC", "Simulação", "niceplay games", "tinyBuild", "L", 2022, null, "49.90", 30, "0.150");
+            jogo("Layers of Fear", "PC", "Terror", "Bloober Team", "Aspyr", "16", 2016, null, "49.90", 30, "0.150");
+            jogo("Darkwood", "PC", "Terror", "Acid Wizard Studio", "Crunching Koalas", "18", 2017, null, "49.90", 30, "0.150");
+            jogo("Five Nights at Freddy's", "PC", "Terror", "Scott Cawthon", "Clickteam", "12", 2014, null, "29.90", 30, "0.150");
+            jogo("Enter the Gungeon", "PC", "Tiro", "Dodge Roll", "Devolver Digital", "12", 2016, null, "49.90", 30, "0.150");
+            jogo("Broforce", "PC", "Tiro", "Free Lives", "Devolver Digital", "14", 2015, null, "49.90", 30, "0.150");
+            jogo("Ruiner", "PC", "Tiro", "Reikon Games", "Devolver Digital", "18", 2017, null, "59.90", 30, "0.150");
             outrasPlataformas();
         }
         jogoRepository.findAll().forEach(j -> {
@@ -309,15 +405,43 @@ public class CargaInicialDominio implements ApplicationRunner {
                 codigoBarras, new BigDecimal(preco), estoque, new BigDecimal(peso)));
     }
 
-    /** Mesmos dados do jogo, na outra plataforma (o código de barras muda por versão, então fica em branco). */
+    /**
+     * Mesmos dados do jogo, na outra plataforma (o código de barras muda por versão, então fica em branco). Cada
+     * versão tem o seu preço, como nas lojas: no PC sai mais barato e no Switch um pouco abaixo do PS5 e do Xbox.
+     */
     private void outrasPlataformas() {
         for (Jogo base : jogoRepository.findAll()) {
-            for (String plataforma : OUTRAS_PLATAFORMAS.getOrDefault(base.getTitulo(), List.of())) {
+            List<String> outras = OUTRAS_PLATAFORMAS.getOrDefault(base.getTitulo(),
+                    NAS_QUATRO_PLATAFORMAS.contains(base.getTitulo()) ? CONSOLES : List.of());
+            for (String plataforma : outras) {
                 jogoRepository.save(new Jogo(base.getTitulo(), plataforma, base.getGenero(), base.getDesenvolvedora(),
-                        base.getDistribuidora(), base.getClassificacaoIndicativa(), base.getAno(), null, base.getPreco(),
-                        base.getEstoque(), base.getPesoKg()));
+                        base.getDistribuidora(), base.getClassificacaoIndicativa(), base.getAno(), null,
+                        precoNaPlataforma(base.getPreco(), base.getPlataforma(), plataforma), base.getEstoque(), base.getPesoKg()));
             }
         }
+    }
+
+    /**
+     * Preço da versão em outra plataforma, a partir da versão original: PS5 e Xbox custam o mesmo (preço de console),
+     * o PC sai 20% abaixo dele e o Switch 10% abaixo; o preço de console sai do original pela mesma regra.
+     * Arredonda para terminar em 4,90 ou 9,90.
+     */
+    static BigDecimal precoNaPlataforma(BigDecimal precoOriginal, String plataformaOriginal, String plataforma) {
+        BigDecimal console = switch (plataformaOriginal) {
+            case "PC" -> precoOriginal.divide(new BigDecimal("0.80"), 2, java.math.RoundingMode.HALF_UP);
+            case "Nintendo Switch" -> precoOriginal.divide(new BigDecimal("0.90"), 2, java.math.RoundingMode.HALF_UP);
+            default -> precoOriginal;
+        };
+        if (plataforma.equals(plataformaOriginal)) return precoOriginal;
+        BigDecimal preco = switch (plataforma) {
+            case "PC" -> console.multiply(new BigDecimal("0.80"));
+            case "Nintendo Switch" -> console.multiply(new BigDecimal("0.90"));
+            default -> console;
+        };
+        if (preco.compareTo(precoOriginal) == 0) return precoOriginal; // PS5 e Xbox com o mesmo preço do original
+        BigDecimal arredondado = preco.divide(BigDecimal.valueOf(5), 0, java.math.RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(5))
+                .subtract(new BigDecimal("0.10"));
+        return arredondado.max(new BigDecimal("9.90")).setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     private void cupom(String codigo, String valor, LocalDate validade) {

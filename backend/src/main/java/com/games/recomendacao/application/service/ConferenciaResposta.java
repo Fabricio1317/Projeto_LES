@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -61,14 +62,36 @@ public class ConferenciaResposta {
             "licao|dever de casa|matematica|capital d|receita|previsao do tempo|clima|eleicao|votar|politic|poema|"
                     + "quem descobriu|maior pais|copa do mundo|quanto e \\d");
     /** Cumprimentos e agradecimentos não são "fora do assunto". */
-    private static final Pattern CONVERSA = Pattern.compile("^\\s*((oi|ola|bom dia|boa tarde|boa noite|valeu|tchau|ate mais|beleza|ok)\\b|obrigad)");
+    private static final Pattern CONVERSA = Pattern.compile(
+            "^\\s*((oi|ola|bom dia|boa tarde|boa noite|valeu|tchau|ate mais|beleza|ok|sim|claro|com certeza|pode ser|por favor)\\b|obrigad)");
+    /** Resposta curta a uma pergunta do assistente ("sim", "quero", "pode mandar", "outros"): é continuação da conversa. */
+    private static final int PALAVRAS_DE_RESPOSTA_CURTA = 4;
     private static final Pattern PRECO = Pattern.compile("r\\$\\s*(\\d{1,3}(?:\\.\\d{3})*,\\d{2})");
     private static final Pattern DESTAQUES = Pattern.compile("destaque(?:s)? (?:para|em)[: ]+([^.\\n]+)");
     private static final Pattern JA_TEM = Pattern.compile("ja tem|ja possui|ja comprou|voce tem este|ja e seu");
+    /** "**Hollow Knight** (Nintendo Switch" ou "**Hollow Knight** (PC)": o título e a plataforma da versão citada. */
+    private static final Pattern VERSAO_CITADA = Pattern.compile("\\*\\*([^*]+)\\*\\*\\s*\\(([^,)]+)");
 
     public Resultado conferir(String resposta, String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas) {
+        return conferir(resposta, mensagem, perfil, catalogo, vendas, List.of());
+    }
+
+    /**
+     * @param respostasAnteriores respostas já dadas nesta conversa a outras perguntas: um modelo pequeno às vezes só
+     *                            copia a resposta anterior, sem olhar o que o cliente perguntou agora
+     */
+    public Resultado conferir(String resposta, String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas,
+                              List<String> respostasAnteriores) {
+        // 0) o cliente respondeu "não" a uma pergunta do assistente: encerra sem empurrar outro jogo
+        if (ContinuacaoConversa.NEGATIVA.equals(mensagem)) {
+            if (catalogo.stream().noneMatch(j -> citado(resposta, j.titulo())) && !resposta.isBlank()) {
+                return new Resultado(resposta, false, List.of());
+            }
+            log.info("Resposta da IA trocada pela conferência: o cliente recusou e a resposta sugeriu jogos");
+            return new Resultado(redacao.encerramento(perfil), true, List.of("o cliente recusou e a resposta sugeriu jogos"));
+        }
         // 1) assunto fora de jogos: sempre a recusa educada (o modelo às vezes responde ou mistura o assunto)
-        if (foraDoAssunto(mensagem, catalogo)) {
+        if (foraDoAssunto(mensagem, catalogo, !respostasAnteriores.isEmpty())) {
             String recusa = redacao.foraDoAssunto(perfil);
             if (resposta.trim().equals(recusa)) return new Resultado(resposta, false, List.of());
             log.info("Resposta da IA trocada pela conferência: assunto fora de jogos");
@@ -77,36 +100,196 @@ public class ConferenciaResposta {
         // 2) pergunta sobre um jogo: só os fatos do catálogo, e avisa se o cliente já tem o jogo
         List<JogoCatalogo> perguntado = jogoPerguntado(mensagem, catalogo);
         if (!perguntado.isEmpty()) {
-            List<String> problemas = problemasSobreJogo(resposta, perguntado, perfil);
+            List<String> problemas = new ArrayList<>(problemasSobreJogo(resposta, perguntado, perfil));
+            problemas.addAll(plataformaPreferidaFalsa(resposta, mensagem, perfil));
             if (problemas.isEmpty()) return new Resultado(resposta, false, List.of());
             log.info("Resposta da IA trocada pela conferência: {}", problemas);
             JogoCatalogo jogo = perguntado.stream().filter(j -> PerfilRecomendacaoService.daPlataformaDoCliente(j, perfil))
                     .findFirst().orElse(perguntado.get(0));
             return new Resultado(redacao.sobreJogo(jogo, perguntado, perfil), true, problemas);
         }
-        // 3) recomendações: jogo já comprado, acima do orçamento ou de outra plataforma
-        List<String> problemas = problemas(resposta, mensagem, perfil, catalogo);
+        // 3) recomendações e buscas: jogo já comprado, acima do orçamento, de outra plataforma, fora do gênero ou
+        //    estilo pedido, "você já tem" inventado ou cópia da resposta anterior
+        List<String> problemas = new ArrayList<>(problemas(resposta, mensagem, perfil, catalogo));
+        problemas.addAll(problemasDoPedido(resposta, mensagem, perfil, catalogo, vendas, respostasAnteriores));
         if (problemas.isEmpty()) return new Resultado(resposta, false, List.of());
         log.info("Resposta da IA trocada pela conferência: {}", problemas);
-        return new Resultado(respostaConferida(mensagem, perfil, catalogo, vendas), true, problemas);
+        String conferida = BUSCA.matcher(semAcento(mensagem)).find()
+                ? respostaDaBusca(mensagem, perfil, catalogo, vendas)
+                : respostaConferida(mensagem, perfil, catalogo, vendas);
+        return new Resultado(conferida, true, problemas.stream().distinct().toList());
+    }
+
+    /**
+     * A resposta tem de servir para o que o cliente pediu agora: os jogos citados são do gênero ou do estilo pedido,
+     * o "você já tem" só vale para o que ele comprou e a resposta não é a mesma dada a outra pergunta.
+     */
+    List<String> problemasDoPedido(String resposta, String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo,
+                                   DadosVendas vendas, List<String> respostasAnteriores) {
+        List<String> problemas = new ArrayList<>();
+        Map<String, List<JogoCatalogo>> citados = catalogo.stream().filter(j -> citado(resposta, j.titulo()))
+                .collect(Collectors.groupingBy(JogoCatalogo::titulo, LinkedHashMap::new, Collectors.toList()));
+        String texto = semAcento(resposta);
+        String pedido = semAcento(mensagem);
+        var plataformasPedidas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
+
+        // "**Hollow Knight** (PC)" para quem marcou só PS5 e Switch: a versão citada tem de ser de uma plataforma dele
+        // (a busca no catálogo lista todas as plataformas de cada jogo, então fica de fora)
+        if (plataformasPedidas.isEmpty() && !perfil.plataformasPreferidas().isEmpty() && !BUSCA.matcher(pedido).find()) {
+            Set<String> doCatalogo = catalogo.stream().map(JogoCatalogo::plataforma).collect(Collectors.toSet());
+            var versao = VERSAO_CITADA.matcher(resposta);
+            while (versao.find()) {
+                String escrito = PerfilRecomendacaoService.normalizarTitulo(versao.group(1));
+                String titulo = citados.keySet().stream().filter(t -> PerfilRecomendacaoService.normalizarTitulo(t).equals(escrito))
+                        .findFirst().orElse(null);
+                String plataforma = versao.group(2).trim();
+                if (titulo != null && doCatalogo.contains(plataforma) && !perfil.plataformasPreferidas().contains(plataforma)
+                        && !citadoNaMensagem(mensagem,titulo)) {
+                    problemas.add(titulo + ": citou a versão de " + plataforma + ", fora das plataformas do cliente");
+                }
+            }
+        }
+
+        // "quero ver os de PC": todo jogo sugerido tem de sair para a plataforma pedida
+        if (!plataformasPedidas.isEmpty()) {
+            citados.forEach((titulo, versoes) -> {
+                if (!citadoNaMensagem(mensagem, titulo) && versoes.stream().noneMatch(j -> plataformasPedidas.contains(j.plataforma()))) {
+                    problemas.add(titulo + ": não sai para " + String.join(" ou ", plataformasPedidas));
+                }
+            });
+        }
+
+        // "você já tem este jogo" dito de jogos que o cliente nunca comprou
+        if (JA_TEM.matcher(texto).find() && !citados.isEmpty()
+                && citados.keySet().stream().noneMatch(perfil.titulosComprados()::contains)) {
+            problemas.add("disse que o cliente já tem " + String.join(", ", citados.keySet()) + ", mas ele não comprou");
+        }
+
+        // "é de Luta, um dos seus gêneros preferidos" para quem marcou Esporte e Corrida
+        problemas.addAll(generoPreferidoFalso(resposta, citados, perfil));
+        problemas.addAll(plataformaPreferidaFalsa(resposta, mensagem, perfil));
+        if (repeteFrases(resposta)) problemas.add("repetiu frases na resposta");
+
+        // o jogo perguntado na mensagem pode aparecer; os outros têm de ser do gênero ou do estilo pedido
+        Map<String, List<JogoCatalogo>> sugeridos = new LinkedHashMap<>(citados);
+        sugeridos.keySet().removeIf(titulo -> citadoNaMensagem(mensagem,titulo));
+        String genero = PerfilRecomendacaoService.generoDoPedido(mensagem, catalogo);
+        if (genero != null) {
+            sugeridos.forEach((titulo, versoes) -> {
+                if (versoes.stream().noneMatch(j -> j.genero().equals(genero))) problemas.add(titulo + ": não é de " + genero);
+            });
+            // "quais jogos de corrida vocês têm?": a lista tem de trazer todos os do gênero nas plataformas do cliente
+            // (ou na plataforma e até o valor que ele pediu)
+            if (BUSCA.matcher(pedido).find()) {
+                List<String> faltam = doGeneroBuscado(genero, mensagem, perfil, catalogo).stream()
+                        .map(JogoCatalogo::titulo).distinct().filter(t -> !citados.containsKey(t)).toList();
+                if (!faltam.isEmpty()) problemas.add("a busca deixou de fora " + String.join(", ", faltam));
+            }
+        } else if (estilos != null) {
+            List<EstilosDeJogo.Estilo> pedidos = estilos.detectar(mensagem);
+            if (!pedidos.isEmpty()) {
+                // os mesmos jogos do bloco JOGOS QUE COMBINAM COM O PEDIDO do prompt (uma palavra solta, como
+                // "criar pistas" num jogo de corrida, não basta para o jogo servir a quem quer criar e ter liberdade)
+                var pedidas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
+                PerfilCliente efetivo = pedidas.isEmpty() ? perfil : perfil.comPlataformas(pedidas);
+                Set<String> combinam = pedidos.stream().flatMap(e -> estilos.jogosPara(e, efetivo, catalogo, 3).stream())
+                        .map(JogoCatalogo::titulo).collect(Collectors.toSet());
+                sugeridos.keySet().stream().filter(titulo -> !combinam.contains(titulo))
+                        .forEach(titulo -> problemas.add(titulo + ": não combina com " + pedidos.get(0).descricao()));
+            }
+        }
+
+        // "outros parecidos com X": a resposta tem de trazer outro jogo, não só o próprio X
+        List<String> base = citados.keySet().stream().filter(t -> citadoNaMensagem(mensagem,t)).toList();
+        if (pedido.contains("parecid") && !base.isEmpty() && sugeridos.isEmpty()) {
+            problemas.add("pediu jogos parecidos com " + base.get(0) + " e a resposta não sugeriu outro");
+        }
+
+        // recomendação sem gênero, valor, estilo ou plataforma na mensagem: vale o perfil de agora (o cliente pode
+        // ter mudado gêneros, plataformas e orçamento na tela), ou seja, as SUGESTÕES PARA ESTE CLIENTE do prompt
+        boolean pedidoGeral = RECOMENDACAO.matcher(pedido).find() && genero == null && plataformasPedidas.isEmpty()
+                && PerfilRecomendacaoService.valorDoPedido(mensagem) == null && !pedido.contains("parecid") && base.isEmpty()
+                && (estilos == null || estilos.detectar(mensagem).isEmpty());
+        if (pedidoGeral && perfis != null && vendas != null && !sugeridos.isEmpty()) {
+            List<Recomendacao> sugestoes = perfis.recomendar(perfil, catalogo, vendas, 5);
+            Set<String> doPerfil = sugestoes.stream().map(r -> r.jogo().titulo()).collect(Collectors.toSet());
+            sugeridos.keySet().stream().filter(t -> !doPerfil.contains(t) && !perfil.titulosComprados().contains(t))
+                    .forEach(t -> problemas.add(t + ": não está nas sugestões do perfil"));
+            // um jogo de cada gênero marcado que tem sugestão (mesmo que sejam 3 ou 4 gêneros)
+            Set<String> generos = perfil.generosPreferidos();
+            List<String> semJogo = generos.stream()
+                    .filter(g -> sugestoes.stream().anyMatch(r -> r.jogo().genero().equals(g)))
+                    .filter(g -> sugeridos.values().stream().flatMap(List::stream).noneMatch(j -> j.genero().equals(g)))
+                    .toList();
+            if (!semJogo.isEmpty()) {
+                problemas.add("não citou jogo de " + String.join(", ", semJogo) + ", gênero que o cliente marcou");
+            }
+        }
+
+        // cópia de uma resposta anterior da conversa (dada a outra pergunta)
+        String normalizada = texto.replaceAll("\\s+", " ").trim();
+        if (respostasAnteriores.stream().anyMatch(a -> semAcento(a).replaceAll("\\s+", " ").trim().equals(normalizada))) {
+            problemas.add("repetiu uma resposta anterior da conversa");
+        }
+        return problemas;
+    }
+
+    /**
+     * Os jogos do gênero que a busca tem de listar: na plataforma pedida na mensagem (ou nas do cliente) e até o valor
+     * pedido, se houver.
+     */
+    private static List<JogoCatalogo> doGeneroBuscado(String genero, String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo) {
+        var pedidas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
+        BigDecimal valor = PerfilRecomendacaoService.valorDoPedido(mensagem);
+        return catalogo.stream().filter(j -> j.genero().equals(genero))
+                .filter(j -> pedidas.isEmpty() ? PerfilRecomendacaoService.daPlataformaDoCliente(j, perfil) : pedidas.contains(j.plataforma()))
+                .filter(j -> valor == null || j.preco().compareTo(valor) <= 0)
+                .toList();
+    }
+
+    /** Busca no catálogo ("quais jogos de corrida vocês têm?"): a lista do gênero ou da plataforma pedida. */
+    private String respostaDaBusca(String mensagem, PerfilCliente perfil, List<JogoCatalogo> catalogo, DadosVendas vendas) {
+        String genero = PerfilRecomendacaoService.generoDoPedido(mensagem, catalogo);
+        if (genero != null) {
+            var pedidas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
+            BigDecimal valor = PerfilRecomendacaoService.valorDoPedido(mensagem);
+            if (pedidas.isEmpty() && valor == null) {
+                return redacao.busca(genero, catalogo.stream().filter(j -> j.genero().equals(genero)).toList(), perfil);
+            }
+            String filtros = (pedidas.isEmpty() ? "" : " para " + String.join(" ou ", pedidas))
+                    + (valor == null ? "" : " até " + PerfilRecomendacaoService.moeda(valor));
+            return redacao.busca(genero, doGeneroBuscado(genero, mensagem, perfil, catalogo), perfil, filtros);
+        }
+        var pedidas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
+        if (pedidas.size() == 1) {
+            String plataforma = pedidas.iterator().next();
+            return redacao.buscaPorPlataforma(plataforma, catalogo.stream().filter(j -> j.plataforma().equals(plataforma)).toList(), perfil);
+        }
+        return respostaConferida(mensagem, perfil, catalogo, vendas);
     }
 
     /** Mensagem sem nada de jogos ou da loja ("qual a capital da França?"). */
     boolean foraDoAssunto(String mensagem, List<JogoCatalogo> catalogo) {
+        return foraDoAssunto(mensagem, catalogo, false);
+    }
+
+    /** @param emConversa o assistente já respondeu nesta conversa: uma resposta curta é continuação dela */
+    boolean foraDoAssunto(String mensagem, List<JogoCatalogo> catalogo, boolean emConversa) {
         String texto = semAcento(mensagem);
         if (ASSUNTO_DE_FORA.matcher(texto).find() && !texto.contains("jog")) return true;
         if (texto.isBlank() || CONVERSA.matcher(texto).find() || ASSUNTO_DA_LOJA.matcher(texto).find()) return false;
+        if (emConversa && texto.trim().split("\\s+").length <= PALAVRAS_DE_RESPOSTA_CURTA) return false;
         if (PLATAFORMA_CITADA.matcher(texto).find() || PerfilRecomendacaoService.valorDoPedido(mensagem) != null) return false;
         if (PerfilRecomendacaoService.generoDoPedido(mensagem, catalogo) != null) return false;
         if (estilos != null && !estilos.detectar(mensagem).isEmpty()) return false;
-        return catalogo.stream().map(JogoCatalogo::titulo).distinct().noneMatch(t -> citado(mensagem, t));
+        return catalogo.stream().map(JogoCatalogo::titulo).distinct().noneMatch(t -> citadoNaMensagem(mensagem,t));
     }
 
     /** As versões do jogo, quando a mensagem pergunta de um jogo só ("O Hogwarts Legacy vale a pena?"). */
     List<JogoCatalogo> jogoPerguntado(String mensagem, List<JogoCatalogo> catalogo) {
         String texto = semAcento(mensagem);
         if (RECOMENDACAO.matcher(texto).find() || BUSCA.matcher(texto).find()) return List.of();
-        List<String> citados = catalogo.stream().map(JogoCatalogo::titulo).distinct().filter(t -> citado(mensagem, t)).toList();
+        List<String> citados = catalogo.stream().map(JogoCatalogo::titulo).distinct().filter(t -> citadoNaMensagem(mensagem,t)).toList();
         if (citados.size() != 1) return List.of();
         return catalogo.stream().filter(j -> j.titulo().equals(citados.get(0))).toList();
     }
@@ -116,6 +299,14 @@ public class ConferenciaResposta {
         String texto = semAcento(resposta);
         JogoCatalogo jogo = versoes.get(0);
         List<String> problemas = new ArrayList<>();
+        // "procure o Minecraft" respondido com outro jogo (o preço e a plataforma podem até bater por acaso)
+        if (!citado(resposta, jogo.titulo())) {
+            problemas.add(jogo.titulo() + ": a resposta não falou do jogo perguntado");
+        }
+        // quem pergunta de um jogo quer saber quanto custa; e a resposta não pode ficar repetindo a mesma frase
+        if (!PRECO.matcher(texto).find()) problemas.add(jogo.titulo() + ": não informou o preço");
+        if (repeteFrases(resposta)) problemas.add(jogo.titulo() + ": repetiu frases na resposta");
+        problemas.addAll(generoPreferidoFalso(resposta, Map.of(jogo.titulo(), versoes), perfil));
         if (perfil.titulosComprados().contains(jogo.titulo()) && !JA_TEM.matcher(texto).find()) {
             problemas.add(jogo.titulo() + ": não avisou que o cliente já tem o jogo");
         }
@@ -134,6 +325,11 @@ public class ConferenciaResposta {
         var preco = PRECO.matcher(texto);
         while (preco.find()) {
             if (!precoCerto.contains(preco.group(1))) problemas.add(jogo.titulo() + ": preço errado (R$ " + preco.group(1) + ")");
+        }
+        // fala em destaques e não traz nenhum dos destaques do catálogo ("**Destaque**:" vazio)
+        if (texto.contains("destaque") && jogo.caracteristicas() != null
+                && java.util.Arrays.stream(semAcento(jogo.caracteristicas()).split(",")).map(String::trim).noneMatch(texto::contains)) {
+            problemas.add(jogo.titulo() + ": não trouxe os destaques do catálogo");
         }
         var destaques = DESTAQUES.matcher(texto);
         if (destaques.find() && jogo.caracteristicas() != null) {
@@ -162,7 +358,7 @@ public class ConferenciaResposta {
             String titulo = jogo.getKey();
             if (!citado(resposta, titulo)) continue;
             citouAlgum = true;
-            if (citado(mensagem, titulo)) continue; // perguntou desse jogo: pode falar dele
+            if (citadoNaMensagem(mensagem,titulo)) continue; // perguntou desse jogo: pode falar dele
             if (perfil.titulosComprados().contains(titulo)) {
                 problemas.add(titulo + ": o cliente já tem");
                 continue;
@@ -186,6 +382,18 @@ public class ConferenciaResposta {
         var pedidas = PerfilRecomendacaoService.plataformasDoPedido(mensagem, catalogo);
         if (!pedidas.isEmpty()) perfil = perfil.comPlataformas(pedidas);
         PerfilCliente efetivo = valor != null ? perfil.comOrcamento(valor) : perfil;
+        // "outros jogos parecidos com X": do gênero de X ou que quem comprou X também levou
+        String parecidoCom = semAcento(mensagem).contains("parecid")
+                ? catalogo.stream().map(JogoCatalogo::titulo).distinct().filter(t -> citadoNaMensagem(mensagem,t)).findFirst().orElse(null) : null;
+        if (parecidoCom != null && perfis != null && vendas != null) {
+            Set<String> generosBase = catalogo.stream().filter(j -> j.titulo().equals(parecidoCom)).map(JogoCatalogo::genero)
+                    .collect(Collectors.toSet());
+            var juntos = vendas.coCompras().getOrDefault(parecidoCom, Map.of());
+            List<JogoCatalogo> candidatos = catalogo.stream().filter(j -> !j.titulo().equals(parecidoCom))
+                    .filter(j -> generosBase.contains(j.genero()) || juntos.containsKey(j.titulo())).toList();
+            List<Recomendacao> parecidos = perfis.recomendarOuMaisVendidos(efetivo, candidatos, vendas, 3);
+            if (!parecidos.isEmpty()) return redacao.parecidos(parecidoCom, parecidos);
+        }
         String genero = PerfilRecomendacaoService.generoDoPedido(mensagem, catalogo);
         if (genero != null) {
             return redacao.genero(efetivo, genero, perfis.doGenero(efetivo, catalogo, vendas, genero));
@@ -208,9 +416,67 @@ public class ConferenciaResposta {
     }
 
     private static boolean citado(String texto, String titulo) {
-        // o título inteiro, sem ser pedaço de outro ("Civilization VI" dentro de "Civilization VII")
-        return Pattern.compile("(?<![\\p{L}\\p{N}])" + Pattern.quote(semAcento(titulo)) + "(?![\\p{L}\\p{N}])")
-                .matcher(semAcento(texto)).find();
+        // o título inteiro (ou o nome antes de ":"), sem ser pedaço de outro ("Civilization VI" dentro de "Civilization VII")
+        return PerfilRecomendacaoService.citaTitulo(texto, titulo);
+    }
+
+    /** Na mensagem do cliente vale também o título com um erro de digitação ("conta mais sobre the wicther 3"). */
+    private static boolean citadoNaMensagem(String mensagem, String titulo) {
+        return PerfilRecomendacaoService.citaTituloAproximado(mensagem, titulo);
+    }
+
+    /** "é de Sandbox, um dos seus gêneros preferidos" dito de um jogo de gênero que o cliente não marcou. */
+    private static List<String> generoPreferidoFalso(String resposta, Map<String, List<JogoCatalogo>> citados, PerfilCliente perfil) {
+        List<String> problemas = new ArrayList<>();
+        for (String linha : resposta.split("\n")) {
+            String semAcentoLinha = semAcento(linha);
+            if (!semAcentoLinha.contains("generos preferidos") && !semAcentoLinha.contains("genero preferido")) continue;
+            List<String> naLinha = citados.keySet().stream().filter(t -> citado(linha, t)).toList();
+            if (naLinha.size() == 1 && citados.get(naLinha.get(0)).stream().noneMatch(j -> perfil.generosPreferidos().contains(j.genero()))) {
+                problemas.add(naLinha.get(0) + ": disse que é de um gênero preferido do cliente, mas não é");
+            }
+        }
+        return problemas;
+    }
+
+    private static final List<String> PLATAFORMAS = List.of("Nintendo Switch", "PC", "PlayStation 5", "Xbox Series X|S");
+    private static final Pattern PREFERIDA_ANTES = Pattern.compile("(as |a )?plataformas? (que voce prefere|preferidas?)|sua plataforma preferida");
+    private static final Pattern PREFERIDA_DEPOIS = Pattern.compile("(a )?sua plataforma (e|eh|sao) ");
+
+    /**
+     * "sai para PlayStation 5, a plataforma que você prefere" ou "a sua plataforma é Xbox" para uma plataforma que o
+     * cliente não marcou no perfil (nem pediu na mensagem).
+     */
+    static List<String> plataformaPreferidaFalsa(String resposta, String mensagem, PerfilCliente perfil) {
+        Set<String> valem = new java.util.HashSet<>(perfil.plataformasPreferidas());
+        valem.addAll(PerfilRecomendacaoService.plataformasCitadas(mensagem, PLATAFORMAS));
+        Set<String> falsas = new java.util.LinkedHashSet<>();
+        for (String linha : semAcento(resposta).split("\n")) {
+            var antes = PREFERIDA_ANTES.matcher(linha);
+            while (antes.find()) {
+                // o trecho desde o último ":", "—" ou "(" até a frase: "é de Sandbox ... e sai para playstation 5, "
+                String trecho = linha.substring(0, antes.start());
+                int corte = Math.max(Math.max(trecho.lastIndexOf(':'), trecho.lastIndexOf('—')), Math.max(trecho.lastIndexOf('('), trecho.lastIndexOf('.')));
+                falsas.addAll(PerfilRecomendacaoService.plataformasCitadas(trecho.substring(corte + 1), PLATAFORMAS));
+            }
+            var depois = PREFERIDA_DEPOIS.matcher(linha);
+            while (depois.find()) {
+                String resto = linha.substring(depois.end());
+                int fim = resto.length();
+                for (char c : new char[]{'.', ';', ',', ':'}) if (resto.indexOf(c) >= 0) fim = Math.min(fim, resto.indexOf(c));
+                falsas.addAll(PerfilRecomendacaoService.plataformasCitadas(resto.substring(0, fim), PLATAFORMAS));
+            }
+        }
+        falsas.removeAll(valem);
+        return falsas.stream().map(p -> "disse que " + p + " é a plataforma preferida do cliente, mas ele não marcou").toList();
+    }
+
+    /** A mesma frase (de umas 3 palavras ou mais) dita duas vezes na resposta. */
+    private static boolean repeteFrases(String resposta) {
+        List<String> frases = java.util.Arrays.stream(semAcento(resposta).split("[.!?\\n]+"))
+                .map(f -> f.replaceAll("[^\\p{L}\\p{N} ]", " ").replaceAll("\\s+", " ").trim())
+                .filter(f -> f.length() >= 15).toList();
+        return frases.size() != frases.stream().distinct().count();
     }
 
     private static String semAcento(String texto) {
