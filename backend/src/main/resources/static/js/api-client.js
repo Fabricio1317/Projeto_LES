@@ -3,6 +3,12 @@
 
 const API_BASE = "/api/clientes";
 
+// Escapa um texto antes de colocá-lo em innerHTML: nome, título ou código digitado com HTML
+// (ex.: <img src=x onerror=...>) aparece como texto e não é executado na tela (XSS).
+function escaparHtml(texto) {
+  return String(texto ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function apiRequest(path, options = {}) {
   return apiRequestUrl(API_BASE + path, options);
 }

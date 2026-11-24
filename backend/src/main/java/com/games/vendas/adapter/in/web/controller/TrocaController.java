@@ -5,6 +5,7 @@ import com.games.vendas.adapter.in.web.dto.request.SolicitarTrocaRequest;
 import com.games.vendas.adapter.in.web.dto.response.TrocaResponse;
 import com.games.vendas.application.service.TrocaService;
 import com.games.vendas.domain.enums.StatusTroca;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -42,11 +43,13 @@ public class TrocaController {
         return ResponseEntity.ok(service.listar(status).stream().map(TrocaResponse::from).toList());
     }
 
+    @SomenteAdministrador
     @PatchMapping("/trocas/{id}/autorizar")
     public ResponseEntity<TrocaResponse> autorizar(@PathVariable Long id) {
         return ResponseEntity.ok(TrocaResponse.from(service.autorizar(id)));
     }
 
+    @SomenteAdministrador
     @PatchMapping("/trocas/{id}/confirmar-recebimento")
     public ResponseEntity<TrocaResponse> confirmarRecebimento(@PathVariable Long id,
                                                               @RequestBody ConfirmarRecebimentoRequest req) {

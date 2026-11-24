@@ -7,7 +7,7 @@
 // A aplicação deve estar rodando em http://localhost:8080 (ver README).
 
 const {
-  API, PRAZO_PADRAO, CARTAO_VISA, CARTAO_MASTER, CARTAO_RECUSADO, unico,
+  API, ADMIN, PRAZO_PADRAO, CARTAO_VISA, CARTAO_MASTER, CARTAO_RECUSADO, unico,
   criarCliente, criarCartao, criarJogo, criarCupomTroca, definirPrazoCarrinho, ajustarEstoqueViaApi,
   comprarViaApi, aguardarStatusPedido, comprarEntregueViaApi, solicitarTrocaViaApi, concluirTrocaViaApi,
   linhaMinhaCompra, statusDaMinhaCompra, statusDoPedido, linhaMinhaTroca, linhaTroca, filtrarTrocas,
@@ -414,12 +414,12 @@ describe("Venda ponta a ponta — do carrinho ao fechamento da troca", () => {
             criarJogo().then((jogo) => {
               comprarViaApi(cliente.id, recusado.id, [{ jogoId: jogo.id, quantidade: 1 }]).then((pedido) => {
                 aguardarStatusPedido(pedido.id, "REPROVADA");
-                cy.request({ method: "PATCH", url: `${API}/pedidos/${pedido.id}/despachar`, failOnStatusCode: false })
+                cy.request({ method: "PATCH", url: `${API}/pedidos/${pedido.id}/despachar`, headers: ADMIN, failOnStatusCode: false })
                   .its("body.codigoRegra").should("eq", "RN0039");
               });
               comprarViaApi(cliente.id, visa.id, [{ jogoId: jogo.id, quantidade: 1 }]).then((pedido) => {
                 aguardarStatusPedido(pedido.id, "APROVADA");
-                cy.request({ method: "PATCH", url: `${API}/pedidos/${pedido.id}/confirmar-entrega`, failOnStatusCode: false })
+                cy.request({ method: "PATCH", url: `${API}/pedidos/${pedido.id}/confirmar-entrega`, headers: ADMIN, failOnStatusCode: false })
                   .its("body.codigoRegra").should("eq", "RN0040");
               });
             });
@@ -440,7 +440,7 @@ describe("Venda ponta a ponta — do carrinho ao fechamento da troca", () => {
           criarJogo().then((jogo) => {
             comprarViaApi(cliente.id, cartao.id, [{ jogoId: jogo.id, quantidade: 1 }]).then((pedido) => {
               aguardarStatusPedido(pedido.id, "APROVADA");
-              cy.request("PATCH", `${API}/pedidos/${pedido.id}/despachar`);
+              cy.request({ method: "PATCH", url: `${API}/pedidos/${pedido.id}/despachar`, headers: ADMIN });
 
               abrirLoja(cliente.id);
               statusDaMinhaCompra(pedido.codigo).should("have.text", "EM TRANSPORTE");
@@ -662,10 +662,10 @@ describe("Venda ponta a ponta — do carrinho ao fechamento da troca", () => {
               solicitarTrocaViaApi(cliente.id, pedido.id, { itens: [{ pedidoItemId: pedido.itens[0].id, quantidade: 1 }] })
                 .then(([troca]) => {
                   // sem autorização, o recebimento não pode ser confirmado
-                  cy.request({ method: "PATCH", url: `${API}/trocas/${troca.id}/confirmar-recebimento`,
+                  cy.request({ method: "PATCH", url: `${API}/trocas/${troca.id}/confirmar-recebimento`, headers: ADMIN,
                     body: { retornarEstoque: true }, failOnStatusCode: false })
                     .its("body.codigoRegra").should("eq", "RF0043");
-                  cy.request("PATCH", `${API}/trocas/${troca.id}/autorizar`);
+                  cy.request({ method: "PATCH", url: `${API}/trocas/${troca.id}/autorizar`, headers: ADMIN });
 
                   cy.visit("/index.html");
                   abrirGestaoVendas();
@@ -819,6 +819,73 @@ describe("Venda ponta a ponta — do carrinho ao fechamento da troca", () => {
             });
           });
         });
+      });
+    });
+  });
+
+  // =====================================================================
+  // Regras de acesso e de segurança da venda
+  // =====================================================================
+  describe("Acesso e segurança — cliente inativo, perfil administrador e XSS", () => {
+
+    it("Cliente inativado com itens no carrinho não consegue finalizar a compra", () => {
+      criarCliente().then((cliente) => {
+        criarCartao(cliente.id).then((cartao) => {
+          criarJogo().then((jogo) => {
+            cy.request("POST", `${API}/clientes/${cliente.id}/carrinho/itens`, { jogoId: jogo.id, quantidade: 1 });
+            cy.request(`${API}/clientes/${cliente.id}/enderecos`).its("body").then((enderecos) => {
+              const endereco = enderecos.find((e) => e.tipo !== "COBRANCA");
+              cy.request("PATCH", `${API}/clientes/${cliente.id}/inativar`);
+              cy.request({
+                method: "POST", url: `${API}/clientes/${cliente.id}/pedidos`, failOnStatusCode: false,
+                body: { enderecoId: endereco.id, cupons: [], cartoes: [{ cartaoId: cartao.id, valor: 1000 }] },
+              }).then((resposta) => {
+                expect(resposta.status).to.eq(422);
+                expect(resposta.body.codigoRegra).to.eq("CLIENTE_INATIVO");
+              });
+              cy.request(`${API}/clientes/${cliente.id}/pedidos`).its("body").should("have.length", 0);
+            });
+          });
+        });
+      });
+    });
+
+    it("Ações da gestão de vendas são recusadas para quem não é administrador", () => {
+      const CLIENTE = { "X-Perfil": "CLIENTE" };
+      const acoes = [
+        ["PATCH", `${API}/pedidos/1/despachar`],
+        ["PATCH", `${API}/pedidos/1/confirmar-entrega`],
+        ["PATCH", `${API}/trocas/1/autorizar`],
+        ["PATCH", `${API}/trocas/1/confirmar-recebimento`, { retornarEstoque: true }],
+        ["POST", `${API}/cupons`, { codigo: "PROMO-INVASOR", tipo: "PROMOCIONAL", valor: 999 }],
+        ["PUT", `${API}/parametros/PRAZO_BLOQUEIO_CARRINHO_SEGUNDOS`, { valor: "999999" }],
+        ["PATCH", `${API}/jogos/1/estoque`, { estoque: 0 }],
+        ["POST", `${API}/jogos`, { titulo: "Invasor" }],
+      ];
+      acoes.forEach(([method, url, body]) => {
+        cy.request({ method, url, body, headers: CLIENTE, failOnStatusCode: false }).its("status").should("eq", 403);
+        cy.request({ method, url, body, failOnStatusCode: false }).its("status").should("eq", 403);
+      });
+      // o cliente continua vendo o catálogo
+      cy.request({ url: `${API}/jogos`, headers: CLIENTE }).its("status").should("eq", 200);
+
+      // na tela, a aba de gestão de vendas só aparece para o administrador
+      cy.visit("/index.html");
+      cy.get("[data-cy=perfil-usuario]").should("have.value", "CLIENTE");
+      cy.get("[data-cy=nav-vendas]").should("not.be.visible");
+      cy.get("[data-cy=perfil-usuario]").select("ADMINISTRADOR");
+      cy.get("[data-cy=nav-vendas]").should("be.visible");
+    });
+
+    it("Nome de cliente com HTML aparece como texto e não é executado (XSS)", () => {
+      const nome = `Hacker <img src=x onerror="window.__xss=1"> ${unico()}`;
+      criarCliente(nome).then(() => {
+        cy.visit("/index.html");
+        abrirConsultaDoCliente(nome);
+        cy.contains("[data-cy=linha-cliente]", nome).find("img").should("not.exist");
+        cy.get("[data-cy=nav-loja]").click();
+        cy.contains("[data-cy=loja-cliente] option", nome).should("exist");
+        cy.window().then((janela) => expect(janela.__xss, "código injetado não pode rodar").to.be.undefined);
       });
     });
   });

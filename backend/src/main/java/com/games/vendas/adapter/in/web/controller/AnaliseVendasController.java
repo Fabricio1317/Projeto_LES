@@ -2,6 +2,7 @@ package com.games.vendas.adapter.in.web.controller;
 
 import com.games.vendas.adapter.in.web.dto.response.HistoricoVendasResponse;
 import com.games.vendas.application.service.AnaliseVendasService;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import java.util.List;
  * pelo {@code PerfilAdministradorInterceptor}.
  */
 @RestController
+@SomenteAdministrador
 @RequestMapping("/api/analises")
 public class AnaliseVendasController {
 

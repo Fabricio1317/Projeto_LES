@@ -3,6 +3,7 @@ package com.games.vendas.adapter.in.web.controller;
 import com.games.vendas.adapter.in.web.dto.request.CupomRequest;
 import com.games.vendas.adapter.in.web.dto.response.CupomResponse;
 import com.games.vendas.application.service.CupomService;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,7 @@ public class CupomController {
         return ResponseEntity.ok(service.listarTodos().stream().map(CupomResponse::from).toList());
     }
 
+    @SomenteAdministrador
     @PostMapping("/cupons")
     public ResponseEntity<CupomResponse> cadastrar(@Valid @RequestBody CupomRequest req) {
         return ResponseEntity.status(201).body(CupomResponse.from(service.cadastrar(req)));

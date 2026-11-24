@@ -7,6 +7,7 @@ import com.games.vendas.application.service.EstoqueService;
 import com.games.vendas.application.service.JogoService;
 import com.games.vendas.application.service.JogoService.JogoComDisponibilidade;
 import com.games.vendas.domain.entity.Jogo;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,12 +39,14 @@ public class JogoController {
         return ResponseEntity.ok(service.listarEstoque().stream().map(JogoResponse::from).toList());
     }
 
+    @SomenteAdministrador
     @PostMapping
     public ResponseEntity<JogoResponse> cadastrar(@Valid @RequestBody JogoRequest req) {
         Jogo jogo = service.cadastrar(req);
         return ResponseEntity.status(201).body(JogoResponse.from(new JogoComDisponibilidade(jogo, jogo.getEstoque())));
     }
 
+    @SomenteAdministrador
     @PatchMapping("/{id}/estoque")
     public ResponseEntity<JogoResponse> ajustarEstoque(@PathVariable Long id, @Valid @RequestBody AjusteEstoqueRequest req) {
         Jogo jogo = service.ajustarEstoque(id, req.estoque());

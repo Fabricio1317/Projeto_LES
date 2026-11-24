@@ -34,7 +34,7 @@ import java.util.Map;
  *          até serem adicionados novamente ou descartados.
  */
 @Service
-public class    CarrinhoService {
+public class CarrinhoService {
 
     public static final long SEGUNDOS_ALERTA_EXPIRACAO = 300;
 
@@ -150,10 +150,12 @@ public class    CarrinhoService {
     /**
      * Usado na finalização da compra: revisa o carrinho e recusa a compra se o
      * prazo expirou (RN0044), se o estoque mudou (RN0032) ou se há itens
-     * retirados por prazo pendentes (RNF0042).
+     * retirados por prazo pendentes (RNF0042). Cliente inativado com itens no
+     * carrinho também não finaliza a compra.
      */
     @Transactional
     public Carrinho revisarParaCompra(Long clienteId) {
+        validarClienteAtivo(clienteId);
         Carrinho carrinho = repository.findByClienteId(clienteId)
                 .orElseThrow(() -> new RegraNegocioException("CARRINHO_VAZIO", "O carrinho está vazio."));
         List<String> avisos = revisar(carrinho);

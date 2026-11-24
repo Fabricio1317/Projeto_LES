@@ -1,6 +1,8 @@
 // Gestão de vendas (administrador): consulta dos pedidos, despacho e confirmação de entrega,
 // pedidos de troca (visualizar, autorizar e confirmar o recebimento), estoque, cupons e parâmetros.
 // A validação do pagamento (APROVADA / REPROVADA) é feita automaticamente pelo sistema.
+// A aba só aparece no perfil administrador (ver aplicarPerfil em analise-vendas.js), e a API recusa
+// as ações para outros perfis (@SomenteAdministrador).
 
 let timerGestao = null;
 
@@ -20,11 +22,11 @@ el("form-filtro-pedidos").addEventListener("submit", (ev) => {
 function resumoPagamento(p) {
   const partes = p.pagamentos.map((pg) => {
     const retorno = pg.aprovado == null ? "" : pg.aprovado ? " ✓" : " ✗ recusado";
-    return `${pg.bandeira} ${pg.numeroMascarado.slice(-4)}: ${formatarMoeda(pg.valor)}${retorno}`;
+    return `${escaparHtml(pg.bandeira)} ${escaparHtml(pg.numeroMascarado.slice(-4))}: ${formatarMoeda(pg.valor)}${retorno}`;
   });
-  p.cupons.forEach((c) => partes.push(`Cupom ${c.codigo}: ${formatarMoeda(c.valor)}`));
+  p.cupons.forEach((c) => partes.push(`Cupom ${escaparHtml(c.codigo)}: ${formatarMoeda(c.valor)}`));
   if (p.cupomTrocoGerado) partes.push(`Troco em cupom ${p.cupomTrocoGerado}: ${formatarMoeda(p.valorTroco)}`);
-  if (p.motivoReprovacao) partes.push(`<span class="texto-erro" data-cy="motivo-reprovacao">${p.motivoReprovacao}</span>`);
+  if (p.motivoReprovacao) partes.push(`<span class="texto-erro" data-cy="motivo-reprovacao">${escaparHtml(p.motivoReprovacao)}</span>`);
   return partes.join("<br>");
 }
 
@@ -113,9 +115,9 @@ async function carregarTrocas() {
         <td class="codigo">${t.pedidoCodigo}</td>
         <td>#${t.clienteId}</td>
         <td>${t.tipoDescricao}</td>
-        <td>${t.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+        <td>${t.itens.map((i) => `${i.quantidade}× ${escaparHtml(i.titulo)}`).join("<br>")}</td>
         <td class="preco">${formatarMoeda(t.valor)}</td>
-        <td data-cy="troca-cupom">${t.cupomGerado || "—"}</td>
+        <td data-cy="troca-cupom">${escaparHtml(t.cupomGerado || "—")}</td>
         <td>${statusTrocaBadge(t)}</td>
         <td class="acoes">${acoesDaTroca(t)}</td>
       </tr>`).join("");
@@ -151,7 +153,7 @@ async function carregarEstoque() {
     const jogos = await JogoApi.estoque();
     el("tbody-estoque").innerHTML = jogos.map((j) => `
       <tr data-cy="linha-estoque" data-jogo-id="${j.id}">
-        <td>${j.titulo}</td>
+        <td>${escaparHtml(j.titulo)}</td>
         <td>${chipPlataforma(j.plataforma)}</td>
         <td class="preco">${formatarMoeda(j.preco)}</td>
         <td data-cy="estoque-fisico">${j.estoque}</td>
@@ -186,8 +188,8 @@ async function carregarCupons() {
     const cupons = await CupomApi.listar();
     el("tbody-cupons").innerHTML = cupons.map((c) => `
       <tr data-cy="linha-cupom-admin">
-        <td>${c.codigo}</td>
-        <td>${c.tipo}</td>
+        <td>${escaparHtml(c.codigo)}</td>
+        <td>${escaparHtml(c.tipo)}</td>
         <td>${formatarMoeda(c.valor)}</td>
         <td>${c.clienteId ? "#" + c.clienteId : "—"}</td>
         <td>${c.validade ? new Date(c.validade + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</td>

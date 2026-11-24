@@ -4,6 +4,7 @@ import com.games.vendas.adapter.in.web.dto.request.FinalizarCompraRequest;
 import com.games.vendas.adapter.in.web.dto.response.PedidoResponse;
 import com.games.vendas.application.service.PedidoService;
 import com.games.vendas.domain.enums.StatusPedido;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -46,11 +47,13 @@ public class PedidoController {
         return ResponseEntity.ok(PedidoResponse.from(service.buscar(id)));
     }
 
+    @SomenteAdministrador
     @PatchMapping("/pedidos/{id}/despachar")
     public ResponseEntity<PedidoResponse> despachar(@PathVariable Long id) {
         return ResponseEntity.ok(PedidoResponse.from(service.despachar(id)));
     }
 
+    @SomenteAdministrador
     @PatchMapping("/pedidos/{id}/confirmar-entrega")
     public ResponseEntity<PedidoResponse> confirmarEntrega(@PathVariable Long id) {
         return ResponseEntity.ok(PedidoResponse.from(service.confirmarEntrega(id)));

@@ -27,7 +27,7 @@ document.querySelector('[data-tab="tab-ia"]').addEventListener("click", iaAbrir)
 
 // --------------------- formatação das respostas ---------------------
 function assistEscapar(texto) {
-  return String(texto ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  return escaparHtml(texto);
 }
 
 /** Markdown simples da IA: **negrito**, listas com "- " ou "* " e quebras de linha. */

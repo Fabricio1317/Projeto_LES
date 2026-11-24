@@ -109,7 +109,9 @@ body {
   color: var(--texto-apagado);
 }
 
-.topbar nav { display: flex; align-items: stretch; gap: 2px; }
+/* min-width + overflow: as abas rolam dentro da barra em vez de alargar a página inteira */
+.topbar nav { display: flex; align-items: stretch; gap: 2px; min-width: 0; overflow-x: auto; }
+.topbar nav .tab-btn { flex-shrink: 0; white-space: nowrap; }
 .tab-btn {
   position: relative;
   background: transparent;
@@ -530,6 +532,13 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--limao); 
 ::-webkit-scrollbar-track { background: var(--fundo); }
 ::-webkit-scrollbar-thumb { background: var(--borda-forte); }
 ::-webkit-scrollbar-thumb:hover { background: var(--limao-escuro); }
+
+/* no perfil administrador há mais abas: abaixo de 1280px a barra vira duas linhas (marca + perfil, abas) */
+@media (max-width: 1280px) {
+  .topbar { flex-wrap: wrap; row-gap: 0; }
+  .topbar nav { order: 3; flex-basis: 100%; padding-bottom: 6px; }
+  .topbar nav .tab-btn { padding: 10px 14px; }
+}
 
 @media (max-width: 900px) {
   .perfil-usuario { padding: 0 0 10px; }

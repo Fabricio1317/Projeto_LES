@@ -50,7 +50,7 @@ nexus-crud/
 │           ├── adapter/
 │           │   ├── in/web/
 │           │   │   ├── controller/             # CarrinhoController, PedidoController, TrocaController, NotificacaoController, CupomController, JogoController, ParametroController, AnaliseVendasController
-│           │   │   ├── interceptor/            # PerfilAdministradorInterceptor (libera a análise só para o administrador)
+│           │   │   ├── interceptor/            # PerfilAdministradorInterceptor + @SomenteAdministrador (rotas do administrador)
 │           │   │   └── dto/request/ e dto/response/
 │           │   └── out/persistence/
 │           │       └── repository/             # repositórios Spring Data JPA
@@ -333,7 +333,7 @@ comparando categorias de produtos em um gráfico de linhas.
 | Critério da atividade | Como está implementado |
 |---|---|
 | Comparação entre categorias | A categoria é o **gênero** do jogo (Ação, RPG, Esporte…), como no mapeamento livro → jogo. Até 8 categorias por consulta, uma linha por categoria. |
-| Acesso só do administrador | O sistema não tem login: o perfil é escolhido no canto superior direito e enviado à API no cabeçalho `X-Perfil`. O `PerfilAdministradorInterceptor` recusa `/api/analises/**` com **403** (`ACESSO_RESTRITO`) para qualquer outro perfil, e a aba só aparece para o Administrador. |
+| Acesso só do administrador | O sistema não tem login: o perfil é escolhido no canto superior direito e enviado à API no cabeçalho `X-Perfil`. As rotas do administrador são marcadas com `@SomenteAdministrador` e o `PerfilAdministradorInterceptor` recusa com **403** (`ACESSO_RESTRITO`) qualquer outro perfil: análise de vendas, treinamento da IA e as ações da gestão de vendas (despachar, confirmar entrega, autorizar troca, confirmar recebimento, criar cupom, alterar parâmetro, cadastrar jogo e ajustar estoque). As abas **Análise de vendas** e **Gestão de vendas** só aparecem para o Administrador. Como não há login, o cabeçalho pode ser forjado: a checagem separa os perfis da demonstração, não substitui uma autenticação. |
 | Eixo horizontal por mês/ano | Todos os meses do período aparecem, inclusive os sem vendas (valor 0), para a linha ser contínua. |
 | Somente compras ENTREGUE | A consulta filtra `status = ENTREGUE`. Compras EM TRANSPORTE, APROVADA, REPROVADA, TROCADO etc. não entram. |
 | Valor total em reais | Soma de preço × quantidade dos itens da categoria, pela data da compra. O frete não entra, porque não pertence a uma categoria. |

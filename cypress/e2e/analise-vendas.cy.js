@@ -105,7 +105,7 @@ function compraEmTransporte(categoria, quantidade) {
     criarJogo({ preco: 100, genero: categoria }).then((jogo) =>
       comprarViaApi(cliente.id, cartao.id, [{ jogoId: jogo.id, quantidade }]).then((pedido) => {
         aguardarStatusPedido(pedido.id, "APROVADA");
-        cy.request("PATCH", `${API}/pedidos/${pedido.id}/despachar`);
+        cy.request({ method: "PATCH", url: `${API}/pedidos/${pedido.id}/despachar`, headers: ADMIN });
         return cy.wrap(pedido);
       }))));
 }

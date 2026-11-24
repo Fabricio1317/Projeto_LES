@@ -6,6 +6,7 @@ import com.games.recomendacao.adapter.in.web.dto.response.TreinamentoResponse;
 import com.games.recomendacao.application.service.AssistenteService;
 import com.games.recomendacao.application.service.TreinamentoService;
 import com.games.recomendacao.domain.entity.MensagemAssistente;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import java.util.Map;
  * histórico de ajustes finos e feedback registrado. Restrito pelo {@code PerfilAdministradorInterceptor}.
  */
 @RestController
+@SomenteAdministrador
 @RequestMapping("/api/ia")
 public class TreinamentoIaController {
 

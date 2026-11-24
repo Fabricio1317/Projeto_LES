@@ -25,19 +25,20 @@ function formatarData(iso) {
   return new Date(iso).toLocaleString("pt-BR");
 }
 function statusPedidoBadge(p) {
-  return `<span class="status-badge ${p.status}" data-cy="status-pedido">${p.statusDescricao}</span>`;
+  return `<span class="status-badge ${p.status}" data-cy="status-pedido">${escaparHtml(p.statusDescricao)}</span>`;
 }
 function statusTrocaBadge(t) {
-  return `<span class="status-badge ${t.status}" data-cy="status-troca">${t.statusDescricao}</span>`;
+  return `<span class="status-badge ${t.status}" data-cy="status-troca">${escaparHtml(t.statusDescricao)}</span>`;
 }
 function chipPlataforma(plataforma) {
   const nome = plataforma.toLowerCase();
   const familia = nome.includes("playstation") ? "ps" : nome.includes("xbox") ? "xbox"
     : nome.includes("nintendo") ? "nintendo" : nome === "pc" ? "pc" : "";
-  return `<span class="chip-plataforma ${familia}">${plataforma}</span>`;
+  return `<span class="chip-plataforma ${familia}">${escaparHtml(plataforma)}</span>`;
 }
 function seloClassificacao(classificacao) {
-  return `<span class="classind ci-${classificacao}" title="Classificação indicativa">${classificacao}</span>`;
+  const ci = escaparHtml(classificacao);
+  return `<span class="classind ci-${ci}" title="Classificação indicativa">${ci}</span>`;
 }
 
 function iconBtn({ icon, titulo, dataCy, id, variant = "", extraClass = "" }) {
@@ -126,9 +127,9 @@ function renderizarTabela(clientes) {
 
     tr.innerHTML = `
       <td>${c.codigoCliente}</td>
-      <td>${c.nome}</td>
+      <td>${escaparHtml(c.nome)}</td>
       <td>${formatarCpf(c.cpf)}</td>
-      <td>${c.email}</td>
+      <td>${escaparHtml(c.email)}</td>
       <td>${c.ranking}</td>
       <td><span class="status-badge ${c.status}" data-cy="status-cliente">${c.status}</span></td>
       <td class="acoes">
@@ -248,9 +249,9 @@ async function recarregarEnderecos(clienteId) {
       const tr = document.createElement("tr");
       tr.dataset.cy = "linha-endereco";
       tr.innerHTML = `
-        <td>${e.apelido}</td>
-        <td>${e.tipo}</td>
-        <td>${e.logradouro}, ${e.numero} — ${e.bairro}, ${e.cidade}/${e.estado}</td>
+        <td>${escaparHtml(e.apelido)}</td>
+        <td>${escaparHtml(e.tipo)}</td>
+        <td>${escaparHtml(`${e.logradouro}, ${e.numero} — ${e.bairro}, ${e.cidade}/${e.estado}`)}</td>
         <td class="acoes">${iconBtn({ icon: "remover", titulo: "Remover endereço", dataCy: "btn-remover-endereco", id: e.id, variant: "icon-btn--danger" })}</td>`;
       tbody.appendChild(tr);
     });
@@ -315,9 +316,9 @@ async function recarregarCartoes(clienteId) {
         extraClass: c.preferencial ? "is-active" : "",
       });
       tr.innerHTML = `
-        <td>${c.numeroMascarado}</td>
-        <td>${c.nomeImpresso}</td>
-        <td>${c.bandeira}</td>
+        <td>${escaparHtml(c.numeroMascarado)}</td>
+        <td>${escaparHtml(c.nomeImpresso)}</td>
+        <td>${escaparHtml(c.bandeira)}</td>
         <td>${estrelaBtn}</td>
         <td class="acoes">${iconBtn({ icon: "remover", titulo: "Remover cartão", dataCy: "btn-remover-cartao", id: c.id, variant: "icon-btn--danger" })}</td>`;
       tbody.appendChild(tr);
@@ -406,7 +407,7 @@ async function abrirModalTransacoes(clienteId) {
       tr.innerHTML = `
         <td class="codigo">${p.codigo}</td>
         <td class="data">${formatarData(p.dataCompra)}</td>
-        <td>${p.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+        <td>${p.itens.map((i) => `${i.quantidade}× ${escaparHtml(i.titulo)}`).join("<br>")}</td>
         <td class="preco">${formatarMoeda(p.total)}</td>
         <td>${statusPedidoBadge(p)}</td>`;
       tbody.appendChild(tr);
@@ -432,10 +433,10 @@ async function carregarAuditoria() {
       tr.dataset.cy = "linha-auditoria";
       tr.innerHTML = `
         <td>${new Date(l.dataHora).toLocaleString("pt-BR")}</td>
-        <td>${l.entidade} #${l.entidadeId}</td>
-        <td>${l.operacao}</td>
-        <td>${l.usuario}</td>
-        <td>${l.dadoAlterado}</td>`;
+        <td>${escaparHtml(l.entidade)} #${l.entidadeId}</td>
+        <td>${escaparHtml(l.operacao)}</td>
+        <td>${escaparHtml(l.usuario)}</td>
+        <td>${escaparHtml(l.dadoAlterado)}</td>`;
       tbody.appendChild(tr);
     });
   } catch (erro) {

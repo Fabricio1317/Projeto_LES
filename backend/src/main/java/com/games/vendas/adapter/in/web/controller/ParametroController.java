@@ -3,6 +3,7 @@ package com.games.vendas.adapter.in.web.controller;
 import com.games.vendas.adapter.in.web.dto.request.ParametroRequest;
 import com.games.vendas.adapter.in.web.dto.response.ParametroResponse;
 import com.games.vendas.application.service.ParametroService;
+import com.games.vendas.adapter.in.web.interceptor.SomenteAdministrador;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,7 @@ public class ParametroController {
         return ResponseEntity.ok(service.listar().stream().map(ParametroResponse::from).toList());
     }
 
+    @SomenteAdministrador
     @PutMapping("/{chave}")
     public ResponseEntity<ParametroResponse> alterar(@PathVariable String chave, @Valid @RequestBody ParametroRequest req) {
         return ResponseEntity.ok(ParametroResponse.from(service.alterar(chave, req.valor())));

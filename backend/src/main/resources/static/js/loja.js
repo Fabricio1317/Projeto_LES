@@ -39,7 +39,7 @@ async function carregarClientesLoja() {
     const select = el("loja-cliente");
     const atual = select.value;
     select.innerHTML = '<option value="">Selecione o cliente</option>' +
-      clientes.map((c) => `<option value="${c.id}">${c.nome} (${c.codigoCliente})</option>`).join("");
+      clientes.map((c) => `<option value="${c.id}">${escaparHtml(c.nome)} (${escaparHtml(c.codigoCliente)})</option>`).join("");
     select.value = clientes.some((c) => String(c.id) === atual) ? atual : "";
     if (select.value) await carregarLoja();
   } catch (erro) {
@@ -80,9 +80,9 @@ async function carregarCatalogo() {
       tr.dataset.cy = "linha-jogo";
       tr.dataset.jogoId = j.id;
       tr.innerHTML = `
-        <td>${j.titulo}</td>
+        <td>${escaparHtml(j.titulo)}</td>
         <td>${chipPlataforma(j.plataforma)}</td>
-        <td>${j.genero}</td>
+        <td>${escaparHtml(j.genero)}</td>
         <td>${seloClassificacao(j.classificacaoIndicativa)}</td>
         <td class="preco">${formatarMoeda(j.preco)}</td>
         <td data-cy="disponivel-jogo">${disponivel}</td>
@@ -132,7 +132,7 @@ function renderizarCarrinho(c) {
 
   const avisos = el("carrinho-avisos");
   avisos.hidden = c.avisos.length === 0;
-  avisos.innerHTML = c.avisos.map((a) => `<div data-cy="aviso-carrinho">${a}</div>`).join("");
+  avisos.innerHTML = c.avisos.map((a) => `<div data-cy="aviso-carrinho">${escaparHtml(a)}</div>`).join("");
 
   // RN0044 — notificação 5 minutos antes de o bloqueio expirar
   const alerta = el("carrinho-alerta-expiracao");
@@ -150,7 +150,7 @@ function renderizarCarrinho(c) {
     tr.dataset.cy = "linha-carrinho";
     tr.dataset.itemId = i.id;
     tr.innerHTML = `
-      <td>${i.titulo}</td>
+      <td>${escaparHtml(i.titulo)}</td>
       <td class="preco">${formatarMoeda(i.precoUnitario)}</td>
       <td><input type="number" min="1" value="${i.quantidade}" class="input-qtd" data-cy="carrinho-qtd"></td>
       <td class="preco" data-cy="carrinho-item-subtotal">${formatarMoeda(i.subtotal)}</td>
@@ -173,7 +173,7 @@ function renderizarCarrinho(c) {
     const tr = document.createElement("tr");
     tr.dataset.cy = "linha-removido";
     tr.innerHTML = `
-      <td>${i.titulo}</td>
+      <td>${escaparHtml(i.titulo)}</td>
       <td>${i.quantidade}</td>
       <td class="acoes">
         <button type="button" class="btn-secondary btn-sm" data-cy="btn-readicionar" data-jogo-id="${i.jogoId}" data-quantidade="${i.quantidade}">Adicionar novamente</button>
@@ -237,7 +237,7 @@ async function abrirCheckout() {
     loja.frete = null;
 
     el("checkout-endereco").innerHTML =
-      loja.enderecos.map((e) => `<option value="${e.id}">${e.apelido} — ${e.logradouro}, ${e.numero} — ${e.cidade}/${e.estado}</option>`).join("") +
+      loja.enderecos.map((e) => `<option value="${e.id}">${escaparHtml(`${e.apelido} — ${e.logradouro}, ${e.numero} — ${e.cidade}/${e.estado}`)}</option>`).join("") +
       '<option value="novo">Novo endereço de entrega…</option>';
     el("checkout-novo-endereco").querySelectorAll("input, select").forEach((campo) => {
       if (campo.type === "checkbox") campo.checked = false; else campo.value = "";
@@ -246,8 +246,8 @@ async function abrirCheckout() {
     el("tbody-pagto-cartoes").innerHTML = cartoes.map((c) => `
       <tr data-cy="linha-cartao-pagamento" data-cartao-id="${c.id}">
         <td><input type="checkbox" data-cy="pagto-cartao-check"></td>
-        <td>${c.numeroMascarado}${c.preferencial ? " (preferencial)" : ""}</td>
-        <td>${c.bandeira}</td>
+        <td>${escaparHtml(c.numeroMascarado)}${c.preferencial ? " (preferencial)" : ""}</td>
+        <td>${escaparHtml(c.bandeira)}</td>
         <td><input type="text" class="input-valor" data-cy="pagto-cartao-valor"></td>
       </tr>`).join("");
     el("pagto-novo-check").checked = false;
@@ -258,7 +258,7 @@ async function abrirCheckout() {
 
     el("cupons-troca-disponiveis").innerHTML = cuponsTroca.length === 0 ? "" :
       '<span class="hint">Seus cupons de troca:</span> ' + cuponsTroca.map((c) =>
-        `<button type="button" class="btn-secondary btn-sm" data-cy="btn-usar-cupom-troca" data-codigo="${c.codigo}">${c.codigo} (${formatarMoeda(c.valor)})</button>`).join(" ");
+        `<button type="button" class="btn-secondary btn-sm" data-cy="btn-usar-cupom-troca" data-codigo="${escaparHtml(c.codigo)}">${escaparHtml(c.codigo)} (${formatarMoeda(c.valor)})</button>`).join(" ");
 
     el("checkout").hidden = false;
     renderizarCupons();
@@ -338,8 +338,8 @@ el("cupons-troca-disponiveis").addEventListener("click", (ev) => {
 
 function renderizarCupons() {
   el("lista-cupons").innerHTML = loja.cupons.map((c) => `
-    <li data-cy="linha-cupom">${c.codigo} — ${c.tipo === "TROCA" ? "troca" : "promocional"} — ${formatarMoeda(c.valor)}
-      <button type="button" class="btn-secondary btn-sm" data-cy="btn-remover-cupom" data-codigo="${c.codigo}">Remover</button>
+    <li data-cy="linha-cupom">${escaparHtml(c.codigo)} — ${c.tipo === "TROCA" ? "troca" : "promocional"} — ${formatarMoeda(c.valor)}
+      <button type="button" class="btn-secondary btn-sm" data-cy="btn-remover-cupom" data-codigo="${escaparHtml(c.codigo)}">Remover</button>
     </li>`).join("");
   atualizarTotais();
 }
@@ -461,7 +461,7 @@ function renderizarMinhasCompras(pedidos) {
       <tr data-cy="linha-minha-compra" data-codigo="${p.codigo}">
         <td class="codigo">${p.codigo}</td>
         <td class="data">${formatarData(p.dataCompra)}</td>
-        <td>${p.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+        <td>${p.itens.map((i) => `${i.quantidade}× ${escaparHtml(i.titulo)}`).join("<br>")}</td>
         <td class="preco">${formatarMoeda(p.total)}</td>
         <td data-cy="cupom-troco-gerado">${p.cupomTrocoGerado ? `${p.cupomTrocoGerado} (${formatarMoeda(p.valorTroco)})` : "—"}</td>
         <td>${statusPedidoBadge(p)}</td>
@@ -480,9 +480,9 @@ function renderizarMinhasTrocas(trocas) {
       <td class="codigo">${t.codigo}</td>
       <td class="codigo">${t.pedidoCodigo}</td>
       <td>${t.tipoDescricao}</td>
-      <td>${t.itens.map((i) => `${i.quantidade}× ${i.titulo}`).join("<br>")}</td>
+      <td>${t.itens.map((i) => `${i.quantidade}× ${escaparHtml(i.titulo)}`).join("<br>")}</td>
       <td class="preco">${formatarMoeda(t.valor)}</td>
-      <td data-cy="troca-cupom-gerado">${t.cupomGerado || "—"}</td>
+      <td data-cy="troca-cupom-gerado">${escaparHtml(t.cupomGerado || "—")}</td>
       <td>${statusTrocaBadge(t)}</td>
     </tr>`).join("");
 }
@@ -491,8 +491,8 @@ function renderizarMinhasTrocas(trocas) {
 function renderizarMeusCupons(cupons) {
   el("meus-cupons-vazio").hidden = cupons.length > 0;
   el("tbody-meus-cupons").innerHTML = cupons.map((c) => `
-    <tr data-cy="linha-meu-cupom" data-codigo="${c.codigo}">
-      <td class="codigo">${c.codigo}</td>
+    <tr data-cy="linha-meu-cupom" data-codigo="${escaparHtml(c.codigo)}">
+      <td class="codigo">${escaparHtml(c.codigo)}</td>
       <td class="preco">${formatarMoeda(c.valor)}</td>
     </tr>`).join("");
 }
@@ -505,7 +505,7 @@ function renderizarNotificacoes(notificacoes) {
   el("btn-marcar-lidas").hidden = naoLidas === 0;
   el("lista-notificacoes").innerHTML = notificacoes.map((n) => `
     <li data-cy="linha-notificacao" class="${n.lida ? "lida" : "nao-lida"}">
-      <span class="data">${formatarData(n.dataHora)}</span> ${n.mensagem}
+      <span class="data">${formatarData(n.dataHora)}</span> ${escaparHtml(n.mensagem)}
     </li>`).join("");
 }
 
@@ -540,7 +540,7 @@ function abrirModalTroca(pedidoId) {
     const disponivel = i.quantidade - quantidadeEmTroca(i.id);
     return `
       <tr data-cy="linha-item-troca" data-item-id="${i.id}">
-        <td>${i.titulo}</td>
+        <td>${escaparHtml(i.titulo)}</td>
         <td>${i.quantidade}</td>
         <td data-cy="troca-disponivel">${disponivel}</td>
         <td><input type="number" min="0" max="${disponivel}" value="0" class="input-qtd" data-cy="troca-qtd"

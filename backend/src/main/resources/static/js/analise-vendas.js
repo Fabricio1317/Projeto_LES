@@ -12,8 +12,11 @@ const analise = {
 // --------------------- perfil (sem login: escolhido na barra superior) ---------------------
 function aplicarPerfil() {
   const admin = perfilAtual() === "ADMINISTRADOR";
+  // análise de vendas e gestão de vendas (despacho, trocas, cupons, estoque e parâmetros) são do administrador
   document.querySelector("[data-cy=nav-analise]").hidden = !admin;
-  if (!admin && !el("tab-analise").hidden) document.querySelector('[data-tab="tab-cadastro"]').click();
+  document.querySelector("[data-cy=nav-vendas]").hidden = !admin;
+  const abertaProibida = !admin && (!el("tab-analise").hidden || !el("tab-vendas").hidden);
+  if (abertaProibida) document.querySelector('[data-tab="tab-cadastro"]').click();
 }
 
 el("perfil-usuario").addEventListener("change", (ev) => {
@@ -62,8 +65,8 @@ function renderizarCategorias(categorias) {
     const slot = analise.slotPorCategoria.get(c);
     return `
       <label class="chip-categoria">
-        <input type="checkbox" data-cy="categoria-check" value="${c}" ${slot ? "checked" : ""}>
-        <span class="amostra-cor" ${slot ? `style="background: var(--serie-${slot})"` : ""}></span>${c}
+        <input type="checkbox" data-cy="categoria-check" value="${escaparHtml(c)}" ${slot ? "checked" : ""}>
+        <span class="amostra-cor" ${slot ? `style="background: var(--serie-${slot})"` : ""}></span>${escaparHtml(c)}
       </label>`;
   }).join("");
 }
@@ -116,9 +119,9 @@ function renderizarResultado(h) {
   el("analise-resultado").hidden = false;
   el("analise-vazio").hidden = h.series.some((s) => s.total > 0);
   el("analise-legenda").innerHTML = h.series.map((s) => `
-    <li data-cy="legenda-item" data-categoria="${s.categoria}">
+    <li data-cy="legenda-item" data-categoria="${escaparHtml(s.categoria)}">
       <span class="amostra-cor" style="background: ${corDaSerie(s.categoria)}"></span>
-      ${s.categoria} <strong data-cy="legenda-total">${formatarMoeda(s.total)}</strong>
+      ${escaparHtml(s.categoria)} <strong data-cy="legenda-total">${formatarMoeda(s.total)}</strong>
     </li>`).join("");
   desenharGrafico(h);
   renderizarTabelaAnalise(h);
@@ -161,9 +164,9 @@ function desenharGrafico(h) {
   const linhas = h.series.map((s) => {
     const pontos = s.valores.map((v, i) => `${x(i)},${y(v)}`).join(" ");
     const marcadores = s.valores.map((v, i) => `
-      <circle class="ponto" data-cy="ponto" data-categoria="${s.categoria}" data-mes="${h.meses[i].chave}" data-valor="${v}"
+      <circle class="ponto" data-cy="ponto" data-categoria="${escaparHtml(s.categoria)}" data-mes="${h.meses[i].chave}" data-valor="${v}"
               cx="${x(i)}" cy="${y(v)}" r="4" style="fill: ${corDaSerie(s.categoria)}"></circle>`).join("");
-    return `<g data-cy="linha-categoria" data-categoria="${s.categoria}">
+    return `<g data-cy="linha-categoria" data-categoria="${escaparHtml(s.categoria)}">
       <polyline class="linha" points="${pontos}" style="stroke: ${corDaSerie(s.categoria)}"></polyline>${marcadores}</g>`;
   }).join("");
 
@@ -176,12 +179,12 @@ function desenharGrafico(h) {
     for (let i = fim.length - 1; i >= 0; i--) {
       fim[i].y = Math.min(fim[i].y, i === fim.length - 1 ? y(0) : fim[i + 1].y - 14);
     }
-    rotulos = fim.map((r) => `<text class="rotulo-direto" x="${x(h.meses.length - 1) + 10}" y="${r.y + 4}">${r.categoria}</text>`).join("");
+    rotulos = fim.map((r) => `<text class="rotulo-direto" x="${x(h.meses.length - 1) + 10}" y="${r.y + 4}">${escaparHtml(r.categoria)}</text>`).join("");
   }
 
   area.innerHTML = `
     <svg width="${largura}" height="${altura}" role="img" data-cy="grafico-linhas"
-         aria-label="Gráfico de linhas do valor vendido por mês para ${h.series.map((s) => s.categoria).join(", ")}">
+         aria-label="Gráfico de linhas do valor vendido por mês para ${escaparHtml(h.series.map((s) => s.categoria).join(", "))}">
       ${grade}${eixoX}
       <line class="eixo" x1="${m.esquerda}" x2="${largura - m.direita}" y1="${y(0)}" y2="${y(0)}"></line>
       <line class="mira" x1="0" x2="0" y1="${m.topo}" y2="${m.topo + alturaUtil}" visibility="hidden"></line>
@@ -201,7 +204,7 @@ function desenharGrafico(h) {
     mira.setAttribute("x2", x(i));
     mira.setAttribute("visibility", "visible");
     tooltip.innerHTML = `<strong>${h.meses[i].rotulo}</strong>` + h.series.map((s) => `
-      <div><span class="amostra-cor" style="background: ${corDaSerie(s.categoria)}"></span>${s.categoria}
+      <div><span class="amostra-cor" style="background: ${corDaSerie(s.categoria)}"></span>${escaparHtml(s.categoria)}
       <span class="valor">${formatarMoeda(s.valores[i])}</span></div>`).join("");
     tooltip.hidden = false;
     const esquerda = x(i) + 14 + tooltip.offsetWidth > largura ? x(i) - 14 - tooltip.offsetWidth : x(i) + 14;
@@ -216,11 +219,11 @@ function desenharGrafico(h) {
 
 // tabela com os mesmos valores do gráfico (leitura sem depender da cor)
 function renderizarTabelaAnalise(h) {
-  el("thead-analise").innerHTML = `<tr><th>Mês</th>${h.series.map((s) => `<th>${s.categoria}</th>`).join("")}</tr>`;
+  el("thead-analise").innerHTML = `<tr><th>Mês</th>${h.series.map((s) => `<th>${escaparHtml(s.categoria)}</th>`).join("")}</tr>`;
   const linhas = h.meses.map((mes, i) => `
     <tr data-cy="linha-analise" data-mes="${mes.chave}">
       <td>${mes.rotulo}</td>
-      ${h.series.map((s) => `<td class="preco" data-cy="valor-celula" data-categoria="${s.categoria}" data-mes="${mes.chave}"
+      ${h.series.map((s) => `<td class="preco" data-cy="valor-celula" data-categoria="${escaparHtml(s.categoria)}" data-mes="${mes.chave}"
             data-valor="${s.valores[i]}">${formatarMoeda(s.valores[i])}</td>`).join("")}
     </tr>`).join("");
   const total = `<tr class="linha-total"><td>Total</td>${h.series.map((s) => `<td class="preco">${formatarMoeda(s.total)}</td>`).join("")}</tr>`;

@@ -16,6 +16,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(perfilAdministrador).addPathPatterns("/api/analises/**", "/api/ia/**");
+        // as rotas restritas são as marcadas com @SomenteAdministrador
+        registry.addInterceptor(perfilAdministrador).addPathPatterns("/api/**");
     }
 }

@@ -5,6 +5,9 @@
 const { gerarCpfValido, formatarCpf } = require("./cpf-generator");
 
 const API = "/api";
+// Ações da gestão de vendas (despacho, entrega, trocas, cupons, parâmetros, estoque e cadastro de jogo)
+// são do perfil administrador: a API recusa sem este cabeçalho.
+const ADMIN = { "X-Perfil": "ADMINISTRADOR" };
 const PRAZO_PADRAO = "1800";
 const CARTAO_VISA = { numero: "4111111111111111", nomeImpresso: "CLIENTE TESTE", bandeira: "VISA", codigoSeguranca: "123" };
 const CARTAO_MASTER = { numero: "5555555555554444", nomeImpresso: "CLIENTE TESTE", bandeira: "MASTERCARD", codigoSeguranca: "321" };
@@ -36,23 +39,24 @@ function criarCartao(clienteId, cartao = CARTAO_VISA) {
 
 /** Edição física de R$ 50,00 e 0,5 kg: 2 unidades + frete SP (R$ 10,00 + 1 kg × R$ 5,00) = R$ 115,00. O gênero é a categoria. */
 function criarJogo({ preco = 50, estoque = 10, pesoKg = 0.5, genero = "Ação" } = {}) {
-  return cy.request("POST", `${API}/jogos`, {
+  return cy.request({ method: "POST", url: `${API}/jogos`, headers: ADMIN, body: {
     titulo: `Jogo [${unico()}]`, plataforma: "PlayStation 5", genero, desenvolvedora: "Estúdio Teste",
     distribuidora: "Distribuidora Teste", classificacaoIndicativa: "12", ano: 2024, codigoBarras: "7890000000000",
     preco, estoque, pesoKg,
-  }).its("body");
+  } }).its("body");
 }
 
 function criarCupomTroca(clienteId, valor) {
-  return cy.request("POST", `${API}/cupons`, { codigo: `TROCA-T${unico()}`, tipo: "TROCA", valor, clienteId }).its("body");
+  return cy.request({ method: "POST", url: `${API}/cupons`, headers: ADMIN,
+    body: { codigo: `TROCA-T${unico()}`, tipo: "TROCA", valor, clienteId } }).its("body");
 }
 
 function definirPrazoCarrinho(segundos) {
-  cy.request("PUT", `${API}/parametros/PRAZO_BLOQUEIO_CARRINHO_SEGUNDOS`, { valor: String(segundos) });
+  cy.request({ method: "PUT", url: `${API}/parametros/PRAZO_BLOQUEIO_CARRINHO_SEGUNDOS`, headers: ADMIN, body: { valor: String(segundos) } });
 }
 
 function ajustarEstoqueViaApi(jogoId, estoque) {
-  cy.request("PATCH", `${API}/jogos/${jogoId}/estoque`, { estoque });
+  cy.request({ method: "PATCH", url: `${API}/jogos/${jogoId}/estoque`, headers: ADMIN, body: { estoque } });
 }
 
 /**
@@ -86,8 +90,8 @@ function aguardarStatusPedido(pedidoId, status, tentativas = 40) {
 /** Leva um pedido recém-finalizado até ENTREGUE (aprovação automática + ações do administrador via API). */
 function levarAteEntregue(pedidoId) {
   aguardarStatusPedido(pedidoId, "APROVADA");
-  cy.request("PATCH", `${API}/pedidos/${pedidoId}/despachar`);
-  return cy.request("PATCH", `${API}/pedidos/${pedidoId}/confirmar-entrega`).its("body");
+  cy.request({ method: "PATCH", url: `${API}/pedidos/${pedidoId}/despachar`, headers: ADMIN });
+  return cy.request({ method: "PATCH", url: `${API}/pedidos/${pedidoId}/confirmar-entrega`, headers: ADMIN }).its("body");
 }
 
 function comprarEntregueViaApi(clienteId, cartaoId, itens) {
@@ -100,8 +104,9 @@ function solicitarTrocaViaApi(clienteId, pedidoId, { compraInteira = false, iten
 
 /** Ciclo completo da troca via API até TROCADO; devolve a troca com o cupom gerado. */
 function concluirTrocaViaApi(trocaId, retornarEstoque = true) {
-  cy.request("PATCH", `${API}/trocas/${trocaId}/autorizar`);
-  return cy.request("PATCH", `${API}/trocas/${trocaId}/confirmar-recebimento`, { retornarEstoque }).its("body");
+  cy.request({ method: "PATCH", url: `${API}/trocas/${trocaId}/autorizar`, headers: ADMIN });
+  return cy.request({ method: "PATCH", url: `${API}/trocas/${trocaId}/confirmar-recebimento`, headers: ADMIN, body: { retornarEstoque } })
+    .its("body");
 }
 
 // --------------------- ações pela interface ---------------------
@@ -203,7 +208,9 @@ function comprarViaInterface(clienteId, titulo, quantidade) {
   return finalizarCompra();
 }
 
+/** A gestão de vendas só aparece no perfil administrador. */
 function abrirGestaoVendas() {
+  cy.get("[data-cy=perfil-usuario]").select("ADMINISTRADOR");
   cy.get("[data-cy=nav-vendas]").click();
   cy.get("[data-cy=tabela-pedidos]").should("be.visible");
 }
@@ -259,7 +266,7 @@ function abrirConsultaDoCliente(nome) {
 }
 
 module.exports = {
-  API, PRAZO_PADRAO, CARTAO_VISA, CARTAO_MASTER, CARTAO_RECUSADO, unico,
+  API, ADMIN, PRAZO_PADRAO, CARTAO_VISA, CARTAO_MASTER, CARTAO_RECUSADO, unico,
   criarCliente, criarCartao, criarJogo, criarCupomTroca, definirPrazoCarrinho, ajustarEstoqueViaApi,
   comprarViaApi, aguardarStatusPedido, levarAteEntregue, comprarEntregueViaApi, solicitarTrocaViaApi, concluirTrocaViaApi,
   ESPERA_VALIDACAO, linhaMinhaCompra, statusDaMinhaCompra, statusDoPedido, linhaMinhaTroca, linhaTroca, filtrarTrocas,
